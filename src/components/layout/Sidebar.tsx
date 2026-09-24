@@ -2,15 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import {
-  Activity,
-  ClipboardList,
-  LayoutDashboard,
-  Pill,
-  Settings,
-  Sparkles,
-  Users,
-} from "lucide-react";
+import { Activity, ClipboardList, GitFork, History, LayoutDashboard, Pill } from "lucide-react";
 import { DEMO_DOCTOR } from "@/lib/mockData";
 import { cn } from "@/lib/cn";
 import { LogoutButton } from "./LogoutButton";
@@ -19,12 +11,11 @@ import { useEffect, useState } from "react";
 
 const NAV = [
   { href: "/doctor", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/doctor/patients", label: "Patients", icon: Users },
   { href: "/doctor/reports", label: "Reports", icon: ClipboardList },
-  { href: "/doctor/insights", label: "AI Insights", icon: Sparkles },
+  { href: "/doctor/history", label: "Patient History", icon: History },
+  { href: "/doctor/graph", label: "Clinical Graph", icon: GitFork },
   { href: "/doctor/medication-safety", label: "Medication Safety", icon: Pill },
   { href: "/doctor/audit", label: "Audit Trail", icon: Activity },
-  { href: "/doctor/settings", label: "Settings", icon: Settings },
 ];
 
 export function Sidebar() {

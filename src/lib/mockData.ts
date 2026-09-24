@@ -1,3 +1,12 @@
+import {
+  CBC_FILE_NAME,
+  CBC_REPORT_ID,
+  createCbcAuditSeed,
+  createCbcFindings,
+  createCbcSourceLines,
+  createCbcTrends,
+} from "./cbcDemo";
+import { createAllergies, createObservations, createSafetyChecks, createVisits } from "./clinicalContext";
 import type {
   AIInsight,
   AppNotification,
@@ -13,20 +22,20 @@ import type {
 
 export const DEMO_DOCTORS: Doctor[] = [
   {
-    id: "doctor-1",
-    name: "Dr. Sarah Wilson",
-    title: "General Physician",
-    specialty: "General Medicine",
-    email: "sarah.wilson@mediassist.demo",
-    initials: "SW",
-  },
-  {
     id: "doctor-2",
     name: "Dr. Priya Nair",
     title: "Internal Medicine",
     specialty: "Internal Medicine",
     email: "priya.nair@mediassist.demo",
     initials: "PN",
+  },
+  {
+    id: "doctor-1",
+    name: "Dr. Sarah Wilson",
+    title: "General Physician",
+    specialty: "General Medicine",
+    email: "sarah.wilson@mediassist.demo",
+    initials: "SW",
   },
 ];
 
@@ -595,13 +604,37 @@ export function buildPatientExplanation(
   };
 }
 
+const cbcReport: MedicalReport = {
+  id: CBC_REPORT_ID,
+  patientId: "patient-arun",
+  doctorId: "doctor-2",
+  title: "CBC Report",
+  type: "CBC",
+  fileName: CBC_FILE_NAME,
+  uploadedAt: "2026-09-22T09:42:00+05:30",
+  processingStatus: "analysis_ready",
+  doctorReviewStatus: "pending",
+  isSynthetic: true,
+  notes: "Synthetic CBC extract for the Triadic Co-Review demo.",
+  labValues: [],
+};
+
 export function createSeedState(): DemoState {
   return {
-    reports: structuredClone(reports),
+    reports: [structuredClone(cbcReport), ...structuredClone(reports).filter((item) => item.id !== CBC_REPORT_ID)],
     insights: structuredClone(insights),
     reviews: structuredClone(reviews),
     auditLogs: structuredClone(auditLogs),
     notifications: structuredClone(notifications),
+    findings: createCbcFindings(),
+    sourceLines: createCbcSourceLines(),
+    triadicEvents: createCbcAuditSeed(),
+    trends: createCbcTrends(),
+    visits: createVisits(),
+    observations: createObservations(),
+    allergies: createAllergies(),
+    safetyChecks: createSafetyChecks(),
+    system: { pdf: true, gemini: true, jev: true, database: true },
   };
 }
 

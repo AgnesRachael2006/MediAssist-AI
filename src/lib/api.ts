@@ -1,3 +1,5 @@
+import { CBC_REPORT_ID, countPipeline, createCbcFindings, needsDoctorReview } from "./cbcDemo";
+import { buildKnowledgeGraph, compareSeries } from "./clinicalContext";
 import {
   DEMO_DOCTOR,
   DEMO_DOCTORS,
@@ -7,6 +9,13 @@ import {
   getDoctorById,
   getPatientById,
 } from "./mockData";
+import {
+  answerQuestion,
+  assertPublishable,
+  rewriteFromStructure,
+  toApprovedExplanation,
+  translateApproved,
+} from "./policy";
 import {
   clearSession,
   getRegisteredAccounts,
@@ -23,13 +32,17 @@ import type {
   DoctorReview,
   DoctorReviewStatus,
   HealthTrend,
+  FindingCard,
   MedicalReport,
   Medication,
   MedicationSafetyCheck,
   PatientExplanation,
+  RejectReason,
+  RewriteStyle,
   SafetyCheckInput,
   SafetyCheckResult,
   SessionUser,
+  TriadicAuditEvent,
 } from "./types";
 import { isDoctorReviewed } from "./types";
 
@@ -41,7 +54,7 @@ import { isDoctorReviewed } from "./types";
  * Intended live path: Next.js → FastAPI → Gemini / Supabase
  */
 const USE_MOCK = process.env.NEXT_PUBLIC_API_MODE !== "live";
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL ?? "";
+const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? process.env.NEXT_PUBLIC_API_BASE_URL ?? "";
 
 function wait(ms = 420) {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -704,6 +717,378 @@ export function doctorName(doctorId: string) {
 
 export function resetDemo() {
   resetDemoState();
+}
+
+function findingsFor(reportId: string) {
+  return getDemoState().findings.filter((finding) => finding.report_id === reportId);
+}
+
+function shortDoctor(name: string) {
+  const cleaned = name.replace(/^Dr\.\s*/, "");
+  return `Dr. ${cleaned.split(" ")[0] ?? cleaned}`;
+}
+
+function addTriadicEvent(event: Omit<TriadicAuditEvent, "id" | "timestamp"> & { timestamp?: string }) {
+  const entry: TriadicAuditEvent = {
+    ...event,
+    id: id("tev"),
+    timestamp: event.timestamp ?? nowIso(),
+  };
+  patchDemoState((state) => ({
+    ...state,
+    triadicEvents: [...state.triadicEvents, entry],
+  }));
+  return entry;
+}
+
+function publishExplanationOnce(reportId: string, doctor: string) {
+  const already = getDemoState().triadicEvents.some(
+    (event) => event.report_id === reportId && event.action === "Patient explanation published",
+  );
+  if (already) return;
+  addTriadicEvent({
+    report_id: reportId,
+    actor: doctor,
+    actor_kind: "doctor",
+    action: "Patient visibility enabled",
+    detail: "Doctor-approved wording is now available to the patient.",
+  });
+}
+
+function applyDecision(
+  findingId: string,
+  patch: Pick<
+    FindingCard,
+    "doctor_decision" | "final_text" | "final_text_ta" | "patient_visible" | "reject_reason"
+  >,
+) {
+  const current = getDemoState().findings.find((finding) => finding.id === findingId);
+  if (!current) throw new Error("Finding not found");
+  const doctor = shortDoctor(DEMO_DOCTOR.name);
+  const decidedAt = nowIso();
+  patchDemoState((state) => ({
+    ...state,
+    findings: state.findings.map((finding) =>
+      finding.id === findingId
+        ? {
+            ...finding,
+            ...patch,
+            ai_draft: finding.ai_draft,
+            doctor_name: doctor,
+            decided_at: decidedAt,
+            updated_at: decidedAt,
+          }
+        : finding,
+    ),
+  }));
+  if (patch.patient_visible) publishExplanationOnce(current.report_id, doctor);
+  return getDemoState().findings.find((finding) => finding.id === findingId) as FindingCard;
+}
+
+export async function getSystemStatus() {
+  await wait(80);
+  if (!USE_MOCK) return liveRequest<import("./types").SystemHealth>("/system/status");
+  return getDemoState().system;
+}
+
+export async function getDoctorDashboard() {
+  await wait(180);
+  if (!USE_MOCK) return liveRequest<import("./types").DoctorDashboardData>("/doctor/dashboard");
+  const state = getDemoState();
+  const queue = state.reports
+    .filter((report) => state.findings.some((finding) => finding.report_id === report.id))
+    .map((report) => {
+      const rows = findingsFor(report.id);
+      const pending = rows.filter(
+        (finding) => needsDoctorReview(finding) && finding.doctor_decision === "pending",
+      ).length;
+      return {
+        report_id: report.id,
+        patient_name: getPatientById(report.patientId)?.name ?? "Synthetic patient",
+        report_name: report.title,
+        review_count: pending,
+        status: pending > 0 ? "Needs doctor review" : "Doctor review recorded",
+        uploaded_at: report.uploadedAt,
+      };
+    });
+  const current = state.findings.filter((finding) => finding.report_id === "rpt-cbc");
+  const scoped = countPipeline(current.length ? current : state.findings);
+  return {
+    greeting_name: shortDoctor(DEMO_DOCTOR.name),
+    ...scoped,
+    queue,
+    attention: (current.length ? current : state.findings).filter(needsDoctorReview),
+  };
+}
+
+export async function getFindings(reportId: string) {
+  await wait(150);
+  if (!USE_MOCK) return liveRequest<FindingCard[]>(`/reports/${reportId}/findings`);
+  return findingsFor(reportId);
+}
+
+export async function acceptFinding(findingId: string) {
+  await wait(280);
+  if (!USE_MOCK) {
+    return liveRequest<FindingCard>(`/findings/${findingId}/accept`, { method: "POST" });
+  }
+  const finding = getDemoState().findings.find((item) => item.id === findingId);
+  if (!finding) throw new Error("Finding not found");
+  const text = (finding.gemini_rewrite ?? finding.ai_draft ?? "").trim();
+  assertPublishable(text, finding);
+  const saved = applyDecision(findingId, {
+    doctor_decision: "accepted",
+    final_text: text,
+    final_text_ta: translateApproved(text, finding),
+    patient_visible: true,
+    reject_reason: null,
+  });
+  addTriadicEvent({
+    report_id: finding.report_id,
+    finding_id: finding.id,
+    actor: shortDoctor(DEMO_DOCTOR.name),
+    actor_kind: "doctor",
+    action: `${finding.test_name} accepted by ${shortDoctor(DEMO_DOCTOR.name)}`,
+    detail: "Doctor accepted wording for the patient explanation. The AI draft was kept unchanged.",
+  });
+  return saved;
+}
+
+export async function editFinding(findingId: string, finalText: string) {
+  await wait(280);
+  if (!USE_MOCK) {
+    return liveRequest<FindingCard>(`/findings/${findingId}/edit`, {
+      method: "POST",
+      body: JSON.stringify({ final_text: finalText }),
+    });
+  }
+  const finding = getDemoState().findings.find((item) => item.id === findingId);
+  if (!finding) throw new Error("Finding not found");
+  assertPublishable(finalText, finding);
+  const saved = applyDecision(findingId, {
+    doctor_decision: "edited",
+    final_text: finalText.trim(),
+    final_text_ta: translateApproved(finalText.trim(), finding),
+    patient_visible: true,
+    reject_reason: null,
+  });
+  addTriadicEvent({
+    report_id: finding.report_id,
+    finding_id: finding.id,
+    actor: shortDoctor(DEMO_DOCTOR.name),
+    actor_kind: "doctor",
+    action: "Doctor edited finding",
+    detail: "Doctor replaced the draft with approved wording. The original AI draft is still stored.",
+  });
+  return saved;
+}
+
+export async function rejectFinding(findingId: string, reason: RejectReason, note?: string) {
+  await wait(280);
+  if (!USE_MOCK) {
+    return liveRequest<FindingCard>(`/findings/${findingId}/reject`, {
+      method: "POST",
+      body: JSON.stringify({ reason, note }),
+    });
+  }
+  const finding = getDemoState().findings.find((item) => item.id === findingId);
+  if (!finding) throw new Error("Finding not found");
+  const saved = applyDecision(findingId, {
+    doctor_decision: "rejected",
+    final_text: null,
+    final_text_ta: null,
+    patient_visible: false,
+    reject_reason: note?.trim() ? `${reason}: ${note.trim()}` : reason,
+  });
+  addTriadicEvent({
+    report_id: finding.report_id,
+    finding_id: finding.id,
+    actor: shortDoctor(DEMO_DOCTOR.name),
+    actor_kind: "doctor",
+    action: finding.jev.overclaim
+      ? "AI overclaim rejected"
+      : `${finding.test_name} rejected by ${shortDoctor(DEMO_DOCTOR.name)}`,
+    detail: `Rejected by ${shortDoctor(DEMO_DOCTOR.name)}. Reason: ${reason.replaceAll("_", " ")}.`,
+  });
+  return saved;
+}
+
+export async function rewriteFinding(findingId: string, style: RewriteStyle) {
+  await wait(700);
+  if (!USE_MOCK) {
+    return liveRequest<FindingCard>(`/ai/findings/${findingId}/rewrite`, {
+      method: "POST",
+      body: JSON.stringify({ style }),
+    });
+  }
+  const system = getDemoState().system;
+  if (!system.gemini) {
+    throw new Error("AI assistance unavailable. Structured report data remains available.");
+  }
+  const finding = getDemoState().findings.find((item) => item.id === findingId);
+  if (!finding) throw new Error("Finding not found");
+  const rewrite = rewriteFromStructure(finding, style);
+  patchDemoState((state) => ({
+    ...state,
+    findings: state.findings.map((item) =>
+      item.id === findingId
+        ? { ...item, gemini_rewrite: rewrite, updated_at: nowIso(), ai_draft: item.ai_draft }
+        : item,
+    ),
+  }));
+  addTriadicEvent({
+    report_id: finding.report_id,
+    finding_id: finding.id,
+    actor: "Gemini",
+    actor_kind: "ai",
+    action: "Gemini rewrite drafted",
+    detail: `${finding.test_name} rewrite (${style.replaceAll("_", " ")}) is waiting for the doctor.`,
+  });
+  return getDemoState().findings.find((item) => item.id === findingId) as FindingCard;
+}
+
+export async function getApprovedExplanation(reportId: string) {
+  await wait(160);
+  if (!USE_MOCK) return liveRequest<import("./types").ApprovedExplanation | null>(`/reports/${reportId}/approved`);
+  const report = getDemoState().reports.find((item) => item.id === reportId);
+  if (!report) return null;
+  const doctor = getDoctorById(report.doctorId)?.name ?? DEMO_DOCTOR.name;
+  return toApprovedExplanation(reportId, report.title, shortDoctor(doctor), getDemoState().findings);
+}
+
+export async function getTrends() {
+  await wait(140);
+  if (!USE_MOCK) return liveRequest<import("./types").TrendSeries[]>("/patient/trends");
+  return getDemoState().trends;
+}
+
+export async function getTriadicAudit(reportId?: string) {
+  await wait(120);
+  if (!USE_MOCK) {
+    const query = reportId ? `?reportId=${reportId}` : "";
+    return liveRequest<TriadicAuditEvent[]>(`/audit${query}`);
+  }
+  const events = getDemoState().triadicEvents;
+  return (reportId ? events.filter((event) => event.report_id === reportId) : events).slice().sort(
+    (a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime(),
+  );
+}
+
+export async function askAboutReport(reportId: string, question: string) {
+  await wait(420);
+  if (!USE_MOCK) {
+    return liveRequest<import("./types").AskResult>("/assistant/ask", {
+      method: "POST",
+      body: JSON.stringify({ reportId, question }),
+    });
+  }
+  const explanation = await getApprovedExplanation(reportId);
+  return answerQuestion(question, explanation, getDemoState().trends);
+}
+
+export async function getPatientPreview(reportId: string) {
+  return getApprovedExplanation(reportId);
+}
+
+export async function getPatientHistory(patientId: string) {
+  await wait(120);
+  const state = getDemoState();
+  return {
+    visits: state.visits.filter((visit) => visit.patient_id === patientId),
+    observations: state.observations.filter((item) => item.patient_id === patientId),
+  };
+}
+
+export async function getPatientTimeline(patientId: string) {
+  const history = await getPatientHistory(patientId);
+  return history.visits
+    .slice()
+    .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+    .map((visit) => ({
+      ...visit,
+      observations: history.observations.filter((item) => item.visit_id === visit.id),
+    }));
+}
+
+export async function getKnowledgeGraph(patientId: string) {
+  await wait(100);
+  const state = getDemoState();
+  return buildKnowledgeGraph({
+    patientId,
+    patientName: getPatientById(patientId)?.name ?? "Synthetic patient",
+    visits: state.visits,
+    allergies: state.allergies,
+    safety: state.safetyChecks,
+  });
+}
+
+export async function getObservationCompare(patientId: string, testName: string) {
+  await wait(80);
+  const points = getDemoState()
+    .observations.filter(
+      (item) => item.patient_id === patientId && item.test_name.toLowerCase() === testName.toLowerCase(),
+    )
+    .map((item) => ({ date: item.date, value: item.value, file_name: item.file_name, source_page: item.source_page, source_line: item.source_line, source_text: item.source_text, report_id: item.report_id }));
+  return { test_name: testName, points, comparison: compareSeries(points) };
+}
+
+export async function getMedicationSafety(patientId: string) {
+  await wait(100);
+  return getDemoState().safetyChecks.filter((item) => item.patient_id === patientId);
+}
+
+export async function reviewMedicationSafety(
+  checkId: string,
+  decision: "approved" | "rejected" | "reviewed",
+) {
+  await wait(200);
+  const current = getDemoState().safetyChecks.find((item) => item.id === checkId);
+  if (!current) throw new Error("Safety check not found");
+  patchDemoState((state) => ({
+    ...state,
+    safetyChecks: state.safetyChecks.map((item) =>
+      item.id === checkId
+        ? {
+            ...item,
+            doctor_decision: decision,
+            patient_visible: false,
+            decided_at: nowIso(),
+          }
+        : item,
+    ),
+  }));
+  addTriadicEvent({
+    report_id: "safety",
+    actor: shortDoctor(DEMO_DOCTOR.name),
+    actor_kind: "doctor",
+    action: "Doctor reviewed warning",
+    detail: `${current.medication}: ${decision}. Prototype curated rule only. Not a prescribing decision.`,
+  });
+  return getDemoState().safetyChecks.find((item) => item.id === checkId);
+}
+
+export async function getHealth() {
+  return getSystemStatus();
+}
+
+export async function loadCbcDemo() {
+  const existing = getDemoState().reports.find((report) => report.id === CBC_REPORT_ID);
+  if (!existing || findingsFor(CBC_REPORT_ID).length === 0) {
+    const seed = createSeedState();
+    patchDemoState((state) => ({
+      ...state,
+      reports: [seed.reports[0], ...state.reports.filter((report) => report.id !== CBC_REPORT_ID)],
+      findings: [
+        ...state.findings.filter((finding) => finding.report_id !== CBC_REPORT_ID),
+        ...createCbcFindings(),
+      ],
+      sourceLines: [
+        ...state.sourceLines.filter((line) => line.report_id !== CBC_REPORT_ID),
+        ...seed.sourceLines,
+      ],
+    }));
+  }
+  return (await getReport(CBC_REPORT_ID)) as MedicalReport;
 }
 
 export type { Medication };

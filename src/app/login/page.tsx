@@ -39,7 +39,7 @@ export default function LoginPage() {
         <div className="relative">
           <BrandLogo light />
           <h1 className="mt-16 max-w-md text-4xl font-semibold leading-tight">
-            Human-centered AI for safer clinical decisions
+            AI suggests. Evidence is pinned to the report. The doctor decides. The patient understands.
           </h1>
           <p className="mt-4 max-w-md text-sm leading-6 text-indigo-100">
             AI analyzes. The doctor reviews. Patients see only approved information.
@@ -131,8 +131,8 @@ export default function LoginPage() {
             </p>
             <div className="mt-5 rounded-xl bg-slate-50 p-3 text-xs text-slate-600">
               <p className="font-medium text-slate-700">Demo accounts (any password)</p>
-              <p className="mt-1">Doctor Demo → sarah.wilson@mediassist.demo</p>
-              <p>Patient Demo → arun.kumar@mediassist.demo</p>
+              <p className="mt-1">Doctor → priya.nair@mediassist.demo</p>
+              <p>Patient → arun.kumar@mediassist.demo</p>
             </div>
           </div>
         </div>

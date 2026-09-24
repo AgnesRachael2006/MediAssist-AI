@@ -1,117 +1,62 @@
 "use client";
 
-import { Suspense, useEffect, useState } from "react";
-import Link from "next/link";
+import { Suspense, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { ReportVoicePlayer } from "@/components/patient/ReportVoicePlayer";
-import { EmptyState, ErrorState, LoadingState } from "@/components/ui/EmptyState";
-import { formatDate } from "@/lib/format";
-import { doctorName, getReportExplanation } from "@/lib/api";
+import { Tabs } from "@/components/ui/Tabs";
+import { EmptyState } from "@/components/ui/EmptyState";
+import { CBC_REPORT_ID } from "@/lib/cbcDemo";
+import { getDoctorById } from "@/lib/mockData";
+import { toApprovedExplanation } from "@/lib/policy";
 import { useDemoStore } from "@/lib/useDemoStore";
 import { usePatientSession } from "@/lib/usePatientSession";
-import { isDoctorReviewed, type PatientExplanation } from "@/lib/types";
 
 function VoiceInner() {
   const params = useSearchParams();
   const { patientId } = usePatientSession();
-  const { reports } = useDemoStore();
-  const mine = reports
-    .filter((report) => report.patientId === patientId && isDoctorReviewed(report.doctorReviewStatus))
-    .sort((a, b) => new Date(b.uploadedAt).getTime() - new Date(a.uploadedAt).getTime());
-  const selected = mine.find((report) => report.id === params.get("report")) ?? mine[0];
-  const selectedId = selected?.id;
-  const [explanation, setExplanation] = useState<PatientExplanation | null>(null);
-  const [failed, setFailed] = useState(false);
-  const [trackedId, setTrackedId] = useState(selectedId);
-  if (trackedId !== selectedId) {
-    setTrackedId(selectedId);
-    setExplanation(null);
-    setFailed(false);
-  }
+  const { reports, findings } = useDemoStore();
+  const reportId = params.get("report") ?? CBC_REPORT_ID;
+  const initial = params.get("lang") === "ta" ? "ta" : "en";
+  const [language, setLanguage] = useState(initial);
+  const report = reports.find((item) => item.id === reportId && item.patientId === patientId);
+  const explanation = report
+    ? toApprovedExplanation(report.id, report.title, getDoctorById(report.doctorId)?.name ?? "your doctor", findings)
+    : null;
 
-  useEffect(() => {
-    if (!selectedId) return;
-    let cancelled = false;
-    getReportExplanation(selectedId)
-      .then((value) => {
-        if (cancelled) return;
-        if (!value) setFailed(true);
-        else setExplanation(value);
-      })
-      .catch(() => {
-        if (!cancelled) setFailed(true);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [selectedId]);
-
-  if (!selected) {
+  if (!explanation) {
     return (
       <EmptyState
-        title="No doctor-reviewed report yet."
-        description="Voice explanation is available after your doctor reviews a report."
+        title="No approved explanation to read aloud."
+        description="Voice plays only after your doctor publishes the wording."
       />
     );
   }
 
+  const script = language === "ta" ? explanation.voice_script_ta : explanation.voice_script;
+
   return (
-    <div className="space-y-5">
+    <div className="space-y-4">
       <div>
-        <h1 className="text-2xl font-semibold text-slate-900">Report Voice Assistant</h1>
-        <p className="mt-1 text-base text-slate-600">
-          Listen to a simple explanation of your doctor-reviewed report.
-        </p>
+        <h1 className="text-2xl font-semibold text-slate-900">Report voice</h1>
+        <p className="mt-1 text-base text-slate-600">Voice is reading your doctor-approved explanation.</p>
       </div>
-
-      {mine.length > 1 ? (
-        <div className="flex flex-wrap gap-2" role="group" aria-label="Choose a reviewed report">
-          {mine.map((report) => (
-            <Link
-              key={report.id}
-              href={`/patient/report-voice?report=${report.id}`}
-              className={`rounded-full px-3 py-2 text-sm ${
-                report.id === selected.id
-                  ? "bg-indigo-700 text-white"
-                  : "border border-slate-200 bg-white text-slate-700"
-              }`}
-            >
-              {report.title} · {formatDate(report.uploadedAt)}
-            </Link>
-          ))}
-        </div>
-      ) : null}
-
-      <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-        <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Report Name</p>
-        <p className="text-lg font-semibold text-slate-900">{selected.title}</p>
-        <p className="mt-2 text-sm text-slate-500">Date</p>
-        <p className="text-base text-slate-800">{formatDate(selected.uploadedAt)}</p>
-        <p className="mt-2 text-sm text-slate-500">Doctor Review Status</p>
-        <p className="text-base font-medium text-emerald-700">✓ Doctor Reviewed</p>
-        <p className="mt-1 text-sm text-slate-500">Reviewed by {doctorName(selected.doctorId)}</p>
-        <p className="mt-3 text-sm leading-6 text-slate-600">
-          Information shown here has been reviewed by your doctor.
-        </p>
-      </div>
-
-      {selected && !explanation && !failed ? <LoadingState label="Generating explanation..." /> : null}
-      {failed ? <ErrorState title="Unable to load report." description="Please try again." /> : null}
-      {explanation ? <ReportVoicePlayer text={explanation.voiceScript} /> : null}
-
-      <p className="text-sm text-slate-500">
-        Have a question about a term?{" "}
-        <Link href={`/patient/ask?report=${selected.id}`} className="font-medium text-indigo-700">
-          Ask MediAssist
-        </Link>
-      </p>
+      <Tabs
+        label="Voice language"
+        value={language}
+        onChange={setLanguage}
+        tabs={[
+          { id: "en", label: "English" },
+          { id: "ta", label: "தமிழ்" },
+        ]}
+      />
+      <ReportVoicePlayer key={script} text={script} title={explanation.title} lang={language === "ta" ? "ta-IN" : "en-US"} />
     </div>
   );
 }
 
 export default function ReportVoicePage() {
   return (
-    <Suspense fallback={<LoadingState label="Loading report..." />}>
+    <Suspense>
       <VoiceInner />
     </Suspense>
   );
