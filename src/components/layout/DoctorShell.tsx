@@ -8,22 +8,21 @@ import { getSession } from "@/lib/session";
 import { hydrateDemoState } from "@/lib/store";
 import { cn } from "@/lib/cn";
 import Link from "next/link";
-import {
-  Activity,
-  ClipboardList,
-  LayoutDashboard,
-  Pill,
-  Settings,
-  Sparkles,
-  Users,
-  X,
-} from "lucide-react";
+import { Activity, ClipboardList, GitFork, History, LayoutDashboard, Pill, X } from "lucide-react";
 import { LogoutButton } from "./LogoutButton";
 
 const TITLES: Record<string, { title: string; subtitle: string }> = {
   "/doctor": {
-    title: "Dashboard",
-    subtitle: "Review patient reports and AI-assisted clinical insights.",
+    title: "Clinical Command Center",
+    subtitle: "Gemini writes. Jev referees. The doctor signs.",
+  },
+  "/doctor/history": {
+    title: "Patient History",
+    subtitle: "Stored visits and comparisons. No generated conclusions.",
+  },
+  "/doctor/graph": {
+    title: "Clinical Graph",
+    subtitle: "Links built from stored patient records.",
   },
   "/doctor/patients": {
     title: "Patients",
@@ -53,12 +52,11 @@ const TITLES: Record<string, { title: string; subtitle: string }> = {
 
 const MOBILE_NAV = [
   { href: "/doctor", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/doctor/patients", label: "Patients", icon: Users },
   { href: "/doctor/reports", label: "Reports", icon: ClipboardList },
-  { href: "/doctor/insights", label: "AI Insights", icon: Sparkles },
+  { href: "/doctor/history", label: "Patient History", icon: History },
+  { href: "/doctor/graph", label: "Clinical Graph", icon: GitFork },
   { href: "/doctor/medication-safety", label: "Medication Safety", icon: Pill },
   { href: "/doctor/audit", label: "Audit Trail", icon: Activity },
-  { href: "/doctor/settings", label: "Settings", icon: Settings },
 ];
 
 export function DoctorShell({ children }: { children: React.ReactNode }) {

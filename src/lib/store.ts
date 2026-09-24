@@ -1,7 +1,7 @@
 import { createSeedState } from "./mockData";
 import type { DemoState } from "./types";
 
-const STORAGE_KEY = "mediassist-demo-v2";
+const STORAGE_KEY = "mediassist-demo-v4";
 const listeners = new Set<() => void>();
 
 let state: DemoState = createSeedState();
@@ -23,7 +23,19 @@ export function hydrateDemoState() {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (raw) state = JSON.parse(raw) as DemoState;
-    if (!state.notifications) state = { ...createSeedState(), ...state, notifications: state.notifications ?? [] };
+    const seed = createSeedState();
+    if (!state.findings?.length || !state.triadicEvents || !state.system || !state.trends) {
+      state = {
+        ...seed,
+        ...state,
+        findings: state.findings?.length ? state.findings : seed.findings,
+        sourceLines: state.sourceLines?.length ? state.sourceLines : seed.sourceLines,
+        triadicEvents: state.triadicEvents?.length ? state.triadicEvents : seed.triadicEvents,
+        trends: state.trends?.length ? state.trends : seed.trends,
+        system: state.system ?? seed.system,
+        notifications: state.notifications ?? seed.notifications,
+      };
+    }
   } catch {
     state = createSeedState();
   }

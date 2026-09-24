@@ -53,8 +53,8 @@ export function LogoutButton({
           </>
         }
       >
-        You will return to the login screen. Demo data on this device is kept unless you reset it
-        in Settings.
+        You will return to the login screen. Demo data on this device stays until you reset it from
+        the doctor dashboard.
       </Modal>
     </>
   );

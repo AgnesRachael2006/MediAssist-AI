@@ -7,7 +7,6 @@ import {
   FileText,
   Home,
   MessageCircle,
-  ShieldCheck,
   Sparkles,
   Volume2,
   LineChart,
@@ -24,11 +23,10 @@ import { LOGGED_IN_PATIENT_ID } from "@/lib/mockData";
 const NAV = [
   { href: "/patient", label: "Overview", icon: Home },
   { href: "/patient/reports", label: "My Reports", icon: FileText },
-  { href: "/patient/trends", label: "Health Trends", icon: LineChart },
   { href: "/patient/ask", label: "Ask MediAssist", icon: MessageCircle },
   { href: "/patient/report-voice", label: "Report Voice", icon: Volume2 },
-  { href: "/patient/doctor-reviews", label: "Doctor Reviews", icon: ShieldCheck },
-  { href: "/patient/timeline", label: "Health Timeline", icon: History },
+  { href: "/patient/trends", label: "Health Trends", icon: LineChart },
+  { href: "/patient/audit", label: "Audit", icon: History },
 ];
 
 const TITLES: Record<string, { title: string; subtitle: string }> = {
@@ -59,6 +57,10 @@ const TITLES: Record<string, { title: string; subtitle: string }> = {
   "/patient/timeline": {
     title: "Health Timeline",
     subtitle: "How your report moved from upload to explanation.",
+  },
+  "/patient/audit": {
+    title: "Your report record",
+    subtitle: "Published steps only. Internal drafts stay with your doctor.",
   },
 };
 

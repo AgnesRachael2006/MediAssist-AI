@@ -8,9 +8,11 @@ type PlayerState = "idle" | "playing" | "paused";
 export function ReportVoicePlayer({
   text,
   title = "Your Report Explained",
+  lang = "en-US",
 }: {
   text: string;
   title?: string;
+  lang?: string;
 }) {
   const [state, setState] = useState<PlayerState>("idle");
   const utteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
@@ -41,7 +43,7 @@ export function ReportVoicePlayer({
     synth.cancel();
     const utterance = new SpeechSynthesisUtterance(text);
     utterance.rate = 0.95;
-    utterance.lang = "en-US";
+    utterance.lang = lang;
     utterance.onend = () => setState("idle");
     utterance.onerror = () => setState("idle");
     utteranceRef.current = utterance;

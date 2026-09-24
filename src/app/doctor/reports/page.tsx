@@ -1,107 +1,70 @@
 "use client";
 
-import { useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { UploadDropzone } from "@/components/reports/UploadDropzone";
-import { ReportTable } from "@/components/reports/ReportTable";
-import { EmptyState, ErrorState, LoadingState } from "@/components/ui/EmptyState";
-import { analyzeReport, uploadReport } from "@/lib/api";
+import { useState } from "react";
+import { Button } from "@/components/ui/Button";
+import { ErrorState, LoadingState } from "@/components/ui/EmptyState";
+import { loadCbcDemo } from "@/lib/api";
+import { CBC_REPORT_ID } from "@/lib/cbcDemo";
 import { useDemoStore } from "@/lib/useDemoStore";
-import { useToast } from "@/components/ui/Toast";
-
-const STEPS = [
-  { id: "uploading", label: "Uploading..." },
-  { id: "extracting", label: "Extracting report..." },
-  { id: "analyzing", label: "Analyzing report..." },
-  { id: "ready", label: "Analysis Ready" },
-] as const;
-
-type Phase = (typeof STEPS)[number]["id"] | "idle" | "error";
+import { formatDateTime } from "@/lib/format";
+import { patientName } from "@/lib/api";
 
 export default function DoctorReportsPage() {
-  const { reports } = useDemoStore();
-  const { notify } = useToast();
+  const { reports, findings } = useDemoStore();
   const router = useRouter();
-  const [step, setStep] = useState<Phase>("idle");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState(false);
+  const queue = reports.filter((report) => findings.some((finding) => finding.report_id === report.id));
 
-  async function runPipeline(fileName: string) {
+  async function openDemo() {
+    setBusy(true);
+    setError(false);
     try {
-      setStep("uploading");
-      await new Promise((resolve) => setTimeout(resolve, 450));
-      setStep("extracting");
-      const report = await uploadReport(fileName);
-      setStep("analyzing");
-      await analyzeReport(report.id);
-      setStep("ready");
-      notify("Analysis complete");
+      const report = await loadCbcDemo();
       router.push(`/doctor/reports/${report.id}`);
     } catch {
-      setStep("error");
-      notify("Analysis failed", "error");
+      setError(true);
+      setBusy(false);
     }
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       <div>
-        <h2 className="text-2xl font-semibold text-slate-900">Clinical Reports</h2>
+        <h2 className="text-2xl font-semibold text-slate-900">Reports</h2>
         <p className="mt-1 text-sm text-slate-500">
-          Upload and review patient medical reports with AI-assisted analysis.
+          The demo uses a synthetic extract of CBC_Report.pdf. The file is not sent to a server.
         </p>
       </div>
-
-      <UploadDropzone
-        busy={step !== "idle" && step !== "error" && step !== "ready"}
-        onUpload={(fileName) => runPipeline(fileName)}
-        onDemo={() => runPipeline("Demo-CBC-Arun-Kumar.pdf")}
-        onInvalid={() => {
-          setStep("error");
-          notify("Please choose a PDF report.", "error");
-        }}
-      />
-
-      {step !== "idle" && step !== "error" ? (
-        <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm" role="status">
-          <ol className="grid gap-2 sm:grid-cols-4">
-            {STEPS.map((item) => {
-              const active = item.id === step;
-              const done = STEPS.findIndex((entry) => entry.id === step) > STEPS.findIndex((entry) => entry.id === item.id);
-              return (
-                <li
-                  key={item.id}
-                  className={`rounded-xl px-3 py-2 text-sm ${
-                    active
-                      ? "bg-indigo-700 font-medium text-white"
-                      : done
-                        ? "bg-emerald-50 text-emerald-800"
-                        : "bg-slate-50 text-slate-500"
-                  }`}
-                >
-                  {item.label}
-                </li>
-              );
-            })}
-          </ol>
-          <div className="mt-3">
-            <LoadingState label={STEPS.find((item) => item.id === step)?.label ?? "Working..."} />
-          </div>
-        </div>
-      ) : null}
-      {step === "error" ? (
-        <ErrorState
-          title="Unable to load report."
-          description="Analysis failed or the file was not a PDF. Please try again with the demo report."
-        />
-      ) : null}
-
-      <section>
-        <h3 className="mb-3 text-sm font-semibold text-slate-900">Recent Reports</h3>
-        {reports.length === 0 ? (
-          <EmptyState title="No reports found" description="Upload a file or use the demo report." />
-        ) : (
-          <ReportTable reports={reports} actionHref={(id) => `/doctor/reports/${id}`} />
-        )}
-      </section>
+      <Button disabled={busy} onClick={openDemo}>Load Demo Report</Button>
+      {busy ? <LoadingState label="Preparing the synthetic CBC extract..." /> : null}
+      {error ? <ErrorState title="Unable to load report." description="Please try again." /> : null}
+      <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+        <table className="min-w-full text-left text-sm">
+          <thead className="bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
+            <tr>
+              <th className="px-4 py-3">Patient</th>
+              <th className="px-4 py-3">Report</th>
+              <th className="px-4 py-3">Uploaded</th>
+            </tr>
+          </thead>
+          <tbody>
+            {(queue.length ? queue : reports.filter((report) => report.id === CBC_REPORT_ID)).map((report) => (
+              <tr key={report.id} className="border-t border-slate-100">
+                <td className="px-4 py-3">{patientName(report.patientId)}</td>
+                <td className="px-4 py-3">
+                  <Link className="font-medium text-indigo-700" href={`/doctor/reports/${report.id}`}>
+                    {report.fileName ?? report.title}
+                  </Link>
+                </td>
+                <td className="px-4 py-3 text-slate-500">{formatDateTime(report.uploadedAt)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }
