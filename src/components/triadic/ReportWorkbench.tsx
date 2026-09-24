@@ -82,6 +82,15 @@ export function ReportWorkbench({ reportId }: { reportId: string }) {
             allergies,
             safety: safetyChecks,
           })}
+          context={{
+            patient: getPatientById(report.patientId),
+            visits,
+            observations,
+            findings,
+            reports,
+            allergies,
+            safetyChecks,
+          }}
         />
       ) : null}
       {tab === "review" ? (

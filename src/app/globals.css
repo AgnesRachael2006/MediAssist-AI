@@ -35,3 +35,20 @@ textarea {
   outline: 2px solid #4338ca;
   outline-offset: 2px;
 }
+
+/* Clinical graph: flowing highlight along selected relationships. */
+.graph-edge-flow {
+  animation: graph-edge-flow 1.4s linear infinite;
+}
+
+@keyframes graph-edge-flow {
+  to {
+    stroke-dashoffset: -32;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .graph-edge-flow {
+    animation: none;
+  }
+}
