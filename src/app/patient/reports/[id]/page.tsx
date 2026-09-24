@@ -20,7 +20,7 @@ export default function PatientReportDetailPage({
   const { reports, findings } = useDemoStore();
   const [language, setLanguage] = useState("en");
   const report = reports.find((item) => item.id === id && item.patientId === patientId);
-  const tamil = language === "ta";
+  const copy = pickLanguage(language);
 
   if (!report) {
     return <ErrorState title="Unable to load report." description="Please try again." />;
@@ -58,36 +58,48 @@ export default function PatientReportDetailPage({
         tabs={[
           { id: "en", label: "English" },
           { id: "ta", label: "தமிழ்" },
+          { id: "kn", label: "ಕನ್ನಡ" },
         ]}
       />
-      <Section title={tamil ? "என்ன சோதிக்கப்பட்டது?" : "What was checked"} body={tamil ? explanation.what_was_checked_ta : explanation.what_was_checked} />
+      <Section
+        title={copy("What was checked", "என்ன சோதிக்கப்பட்டது?", "ಏನನ್ನು ಪರಿಶೀಲಿಸಲಾಯಿತು?")}
+        body={copy(explanation.what_was_checked, explanation.what_was_checked_ta, explanation.what_was_checked_kn)}
+      />
       <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-        <h2 className="text-base font-semibold text-slate-900">{tamil ? "முடிவுகள் என்ன காட்டுகின்றன?" : "What your results show"}</h2>
+        <h2 className="text-base font-semibold text-slate-900">
+          {copy("What your results show", "முடிவுகள் என்ன காட்டுகின்றன?", "ಫಲಿತಾಂಶಗಳು ಏನು ತೋರಿಸುತ್ತವೆ?")}
+        </h2>
         <div className="mt-3 space-y-3">
           {explanation.results.map((result) => (
             <article key={result.test_name}>
               <p className="text-sm font-semibold text-slate-900">{result.test_name}</p>
-              <p className="mt-1 text-base leading-7 text-slate-700">{tamil ? result.text_ta : result.text}</p>
+              <p className="mt-1 text-base leading-7 text-slate-700">{copy(result.text, result.text_ta, result.text_kn)}</p>
             </article>
           ))}
         </div>
       </section>
-      <Section title={tamil ? "என்ன விடுபட்டது?" : "What was missing"} body={tamil ? explanation.what_was_missing_ta : explanation.what_was_missing} />
-      <Section title={tamil ? "மருத்துவரிடம் என்ன பேசலாம்?" : "What to discuss with your doctor"} body={tamil ? explanation.discuss_ta : explanation.discuss} />
       <Section
-        title={tamil ? "மருத்துவர் பரிசீலனை" : "Doctor review"}
-        body={
-          tamil
-            ? `${explanation.doctor_name} இந்த விளக்கத்தை அங்கீகரித்தார்.`
-            : `${explanation.doctor_name} approved this explanation.`
-        }
+        title={copy("What was missing", "என்ன விடுபட்டது?", "ಏನು ಕಾಣೆಯಾಗಿದೆ?")}
+        body={copy(explanation.what_was_missing, explanation.what_was_missing_ta, explanation.what_was_missing_kn)}
+      />
+      <Section
+        title={copy("What to discuss with your doctor", "மருத்துவரிடம் என்ன பேசலாம்?", "ವೈದ್ಯರೊಂದಿಗೆ ಏನು ಚರ್ಚಿಸಬೇಕು?")}
+        body={copy(explanation.discuss, explanation.discuss_ta, explanation.discuss_kn)}
+      />
+      <Section
+        title={copy("Doctor review", "மருத்துவர் பரிசீலனை", "ವೈದ್ಯರ ಪರಿಶೀಲನೆ")}
+        body={copy(
+          `${explanation.doctor_name} approved this explanation.`,
+          `${explanation.doctor_name} இந்த விளக்கத்தை அங்கீகரித்தார்.`,
+          `${explanation.doctor_name} ಈ ವಿವರಣೆಯನ್ನು ಅನುಮೋದಿಸಿದ್ದಾರೆ.`,
+        )}
       />
       <p className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-base font-medium text-slate-900">
-        {tamil ? explanation.notice_ta : explanation.notice}
+        {copy(explanation.notice, explanation.notice_ta, explanation.notice_kn)}
       </p>
       <div className="flex flex-wrap gap-3">
         <Link href={`/patient/report-voice?report=${report.id}&lang=${language}`} className="inline-flex min-h-11 items-center rounded-xl bg-indigo-700 px-4 text-sm font-medium text-white">
-          {tamil ? "கேளுங்கள்" : "Listen"}
+          {copy("Listen", "கேளுங்கள்", "ಕೇಳಿ")}
         </Link>
         <Link href={`/patient/ask?report=${report.id}`} className="inline-flex min-h-11 items-center rounded-xl border border-slate-200 px-4 text-sm font-medium text-slate-800">
           Ask MediAssist
@@ -95,6 +107,14 @@ export default function PatientReportDetailPage({
       </div>
     </div>
   );
+}
+
+function pickLanguage(language: string) {
+  return (english: string, tamil: string, kannada: string) => {
+    if (language === "ta") return tamil;
+    if (language === "kn") return kannada;
+    return english;
+  };
 }
 
 function Section({ title, body }: { title: string; body: string }) {

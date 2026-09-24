@@ -295,6 +295,7 @@ export interface FindingCard {
   doctor_decision: FindingDecision;
   final_text: string | null;
   final_text_ta: string | null;
+  final_text_kn: string | null;
   patient_visible: boolean;
   doctor_name: string | null;
   decided_at: string | null;
@@ -343,6 +344,7 @@ export interface ApprovedStatement {
   test_name: string;
   text: string;
   text_ta: string;
+  text_kn: string;
 }
 
 export interface ApprovedExplanation {
@@ -352,15 +354,20 @@ export interface ApprovedExplanation {
   reviewed_at: string | null;
   notice: string;
   notice_ta: string;
+  notice_kn: string;
   what_was_checked: string;
   what_was_checked_ta: string;
+  what_was_checked_kn: string;
   results: ApprovedStatement[];
   what_was_missing: string;
   what_was_missing_ta: string;
+  what_was_missing_kn: string;
   discuss: string;
   discuss_ta: string;
+  discuss_kn: string;
   voice_script: string;
   voice_script_ta: string;
+  voice_script_kn: string;
 }
 
 export interface AskResult {

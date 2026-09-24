@@ -12,7 +12,7 @@ export function Tabs({
   label: string;
 }) {
   return (
-    <div role="tablist" aria-label={label} className="inline-flex rounded-xl bg-slate-100 p-1">
+    <div role="tablist" aria-label={label} className="inline-flex flex-wrap rounded-xl bg-slate-100 p-1">
       {tabs.map((tab) => {
         const selected = tab.id === value;
         return (

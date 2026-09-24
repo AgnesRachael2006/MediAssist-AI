@@ -60,6 +60,32 @@ const TAMIL_SENTENCES: Record<string, string> = {
     "இந்த மதிப்பு அறிக்கையில் அச்சிடப்பட்ட குறிப்பு வரம்பிற்குள் உள்ளது. முந்தைய முடிவு இந்த கோப்புடன் இணைக்கப்படவில்லை.",
 };
 
+const KANNADA_SENTENCES: Record<string, string> = {
+  "Value is below the reference range provided in this report.":
+    "ಈ ಮೌಲ್ಯವು ಈ ವರದಿಯಲ್ಲಿ ನೀಡಿದ ಉಲ್ಲೇಖ ವ್ಯಾಪ್ತಿಗಿಂತ ಕಡಿಮೆಯಿದೆ.",
+  "Value is within the reference range provided in this report.":
+    "ಈ ಮೌಲ್ಯವು ಈ ವರದಿಯಲ್ಲಿ ನೀಡಿದ ಉಲ್ಲೇಖ ವ್ಯಾಪ್ತಿಯೊಳಗಿದೆ.",
+  "Your hemoglobin level is below the reference range provided in the report.":
+    "ನಿಮ್ಮ ಹಿಮೋಗ್ಲೋಬಿನ್ ಮಟ್ಟವು ವರದಿಯಲ್ಲಿ ನೀಡಿದ ಉಲ್ಲೇಖ ವ್ಯಾಪ್ತಿಗಿಂತ ಕಡಿಮೆಯಿದೆ.",
+  "Your mcv level is below the reference range provided in the report.":
+    "ನಿಮ್ಮ ಎಂಸಿವಿ ಮಟ್ಟವು ವರದಿಯಲ್ಲಿ ನೀಡಿದ ಉಲ್ಲೇಖ ವ್ಯಾಪ್ತಿಗಿಂತ ಕಡಿಮೆಯಿದೆ.",
+  "Your platelets level is below the reference range provided in the report.":
+    "ನಿಮ್ಮ ಪ್ಲೇಟ್‌ಲೆಟ್ ಮಟ್ಟವು ವರದಿಯಲ್ಲಿ ನೀಡಿದ ಉಲ್ಲೇಖ ವ್ಯಾಪ್ತಿಗಿಂತ ಕಡಿಮೆಯಿದೆ.",
+};
+
+export function translateApprovedKannada(text: string, finding: FindingCard) {
+  const known = KANNADA_SENTENCES[text.trim()];
+  if (known) return known;
+  const position = finding.checks.outside_range
+    ? "ನೀಡಿದ ಉಲ್ಲೇಖ ವ್ಯಾಪ್ತಿಗಿಂತ ಕಡಿಮೆಯಿದೆ"
+    : "ನೀಡಿದ ಉಲ್ಲೇಖ ವ್ಯಾಪ್ತಿಯೊಳಗಿದೆ";
+  const previous =
+    finding.previous_value === null
+      ? "ಹಿಂದಿನ ಫಲಿತಾಂಶ ಈ ವರದಿಯಲ್ಲಿಲ್ಲ."
+      : `ಹಿಂದಿನ ದಾಖಲೆ ${finding.previous_value} ${finding.previous_unit ?? finding.unit}.`;
+  return `${finding.test_name} ಮೌಲ್ಯ ${finding.value} ${finding.unit}. ಉಲ್ಲೇಖ ವ್ಯಾಪ್ತಿ ${finding.reference_range}. ಈ ಮೌಲ್ಯ ${position}. ${previous} ಇದು ರೋಗನಿರ್ಣಯವಲ್ಲ.`;
+}
+
 export function translateApproved(text: string, finding: FindingCard) {
   const known = TAMIL_SENTENCES[text.trim()];
   if (known) return known;
@@ -105,11 +131,20 @@ export function toApprovedExplanation(
   const missingTa = missing.length
     ? missing.map((finding) => `${finding.test_name}: ${finding.final_text_ta ?? ""}`).join(" ")
     : "இந்த அறிக்கைக்கு விடுபட்ட தகவல் குறிப்பு எதுவும் வெளியிடப்படவில்லை.";
+  const missingKn = missing.length
+    ? missing
+        .map(
+          (finding) =>
+            `${finding.test_name}: ${finding.final_text_kn || translateApprovedKannada(finding.final_text as string, finding)}`,
+        )
+        .join(" ")
+    : "ಈ ವರದಿಗೆ ಕಾಣೆಯಾದ ಮಾಹಿತಿಯ ಟಿಪ್ಪಣಿ ಪ್ರಕಟವಾಗಿಲ್ಲ.";
 
   const results = visible.map((finding) => ({
     test_name: finding.test_name,
     text: finding.final_text as string,
     text_ta: finding.final_text_ta || translateApproved(finding.final_text as string, finding),
+    text_kn: finding.final_text_kn || translateApprovedKannada(finding.final_text as string, finding),
   }));
 
   const voice = [
@@ -129,6 +164,14 @@ export function toApprovedExplanation(
     "இது ஒரு நோயறிதல் அல்ல.",
   ].join(" ");
 
+  const voiceKn = [
+    "ಇದು ನಿಮ್ಮ ವೈದ್ಯರು ಅನುಮೋದಿಸಿದ ವಿವರಣೆ.",
+    ...results.map((item) => `${item.test_name}. ${item.text_kn}`),
+    missingKn,
+    "ಇದನ್ನು ನಿಮ್ಮ ವರದಿಯನ್ನು ಪರಿಶೀಲಿಸಿದ ವೈದ್ಯರೊಂದಿಗೆ ಚರ್ಚಿಸಿ.",
+    "ಇದು ರೋಗನಿರ್ಣಯವಲ್ಲ.",
+  ].join(" ");
+
   return {
     report_id: reportId,
     title,
@@ -136,15 +179,20 @@ export function toApprovedExplanation(
     reviewed_at: reviewedAt,
     notice: "This is not a diagnosis.",
     notice_ta: "இது ஒரு நோயறிதல் அல்ல.",
+    notice_kn: "ಇದು ರೋಗನಿರ್ಣಯವಲ್ಲ.",
     what_was_checked: `Your doctor approved notes for ${names}.`,
     what_was_checked_ta: `உங்கள் மருத்துவர் ${names} குறித்த விளக்கத்தை அங்கீகரித்தார்.`,
+    what_was_checked_kn: `ನಿಮ್ಮ ವೈದ್ಯರು ${names} ಕುರಿತ ಟಿಪ್ಪಣಿಯನ್ನು ಅನುಮೋದಿಸಿದ್ದಾರೆ.`,
     results,
     what_was_missing: missingText,
     what_was_missing_ta: missingTa,
+    what_was_missing_kn: missingKn,
     discuss: "Discuss these approved notes with the doctor who reviewed your report.",
     discuss_ta: "இந்த அங்கீகரிக்கப்பட்ட குறிப்புகளை உங்கள் அறிக்கையை பரிசீலித்த மருத்துவரிடம் விவாதிக்கவும்.",
+    discuss_kn: "ಈ ಅನುಮೋದಿತ ಟಿಪ್ಪಣಿಗಳನ್ನು ನಿಮ್ಮ ವರದಿಯನ್ನು ಪರಿಶೀಲಿಸಿದ ವೈದ್ಯರೊಂದಿಗೆ ಚರ್ಚಿಸಿ.",
     voice_script: voice,
     voice_script_ta: voiceTa,
+    voice_script_kn: voiceKn,
   };
 }
 

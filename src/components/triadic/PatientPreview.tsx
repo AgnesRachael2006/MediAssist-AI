@@ -20,6 +20,7 @@ export function PatientPreview({
   const [language, setLanguage] = useState("en");
   const [listen, setListen] = useState(false);
   const explanation = toApprovedExplanation(reportId, title, doctorName, findings);
+  const kannada = language === "kn";
   const tamil = language === "ta";
 
   return (
@@ -40,22 +41,25 @@ export function PatientPreview({
             tabs={[
               { id: "en", label: "English" },
               { id: "ta", label: "தமிழ்" },
+              { id: "kn", label: "ಕನ್ನಡ" },
             ]}
           />
           {explanation.results.map((result) => (
             <p key={result.test_name} className="text-sm leading-6 text-slate-800">
               <span className="font-medium">{result.test_name}. </span>
-              {tamil ? result.text_ta : result.text}
+              {kannada ? result.text_kn : tamil ? result.text_ta : result.text}
             </p>
           ))}
-          <p className="text-sm font-medium text-slate-900">{tamil ? explanation.notice_ta : explanation.notice}</p>
+          <p className="text-sm font-medium text-slate-900">
+            {kannada ? explanation.notice_kn : tamil ? explanation.notice_ta : explanation.notice}
+          </p>
           <button type="button" className="text-sm font-medium text-indigo-700" onClick={() => setListen((open) => !open)}>
             {listen ? "Hide voice" : "Listen"}
           </button>
           {listen ? (
             <ReportVoicePlayer
-              text={tamil ? explanation.voice_script_ta : explanation.voice_script}
-              lang={tamil ? "ta-IN" : "en-US"}
+              text={kannada ? explanation.voice_script_kn : tamil ? explanation.voice_script_ta : explanation.voice_script}
+              lang={kannada ? "kn-IN" : tamil ? "ta-IN" : "en-US"}
               title="Approved explanation"
             />
           ) : null}

@@ -16,7 +16,8 @@ function VoiceInner() {
   const { patientId } = usePatientSession();
   const { reports, findings } = useDemoStore();
   const reportId = params.get("report") ?? CBC_REPORT_ID;
-  const initial = params.get("lang") === "ta" ? "ta" : "en";
+  const requested = params.get("lang");
+  const initial = requested === "ta" || requested === "kn" ? requested : "en";
   const [language, setLanguage] = useState(initial);
   const report = reports.find((item) => item.id === reportId && item.patientId === patientId);
   const explanation = report
@@ -32,7 +33,8 @@ function VoiceInner() {
     );
   }
 
-  const script = language === "ta" ? explanation.voice_script_ta : explanation.voice_script;
+  const script =
+    language === "kn" ? explanation.voice_script_kn : language === "ta" ? explanation.voice_script_ta : explanation.voice_script;
 
   return (
     <div className="space-y-4">
@@ -47,9 +49,15 @@ function VoiceInner() {
         tabs={[
           { id: "en", label: "English" },
           { id: "ta", label: "தமிழ்" },
+          { id: "kn", label: "ಕನ್ನಡ" },
         ]}
       />
-      <ReportVoicePlayer key={script} text={script} title={explanation.title} lang={language === "ta" ? "ta-IN" : "en-US"} />
+      <ReportVoicePlayer
+        key={script}
+        text={script}
+        title={explanation.title}
+        lang={language === "kn" ? "kn-IN" : language === "ta" ? "ta-IN" : "en-US"}
+      />
     </div>
   );
 }

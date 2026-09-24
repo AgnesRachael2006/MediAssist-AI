@@ -15,6 +15,7 @@ import {
   rewriteFromStructure,
   toApprovedExplanation,
   translateApproved,
+  translateApprovedKannada,
 } from "./policy";
 import {
   clearSession,
@@ -759,7 +760,7 @@ function applyDecision(
   findingId: string,
   patch: Pick<
     FindingCard,
-    "doctor_decision" | "final_text" | "final_text_ta" | "patient_visible" | "reject_reason"
+    "doctor_decision" | "final_text" | "final_text_ta" | "final_text_kn" | "patient_visible" | "reject_reason"
   >,
 ) {
   const current = getDemoState().findings.find((finding) => finding.id === findingId);
@@ -840,6 +841,7 @@ export async function acceptFinding(findingId: string) {
     doctor_decision: "accepted",
     final_text: text,
     final_text_ta: translateApproved(text, finding),
+    final_text_kn: translateApprovedKannada(text, finding),
     patient_visible: true,
     reject_reason: null,
   });
@@ -869,6 +871,7 @@ export async function editFinding(findingId: string, finalText: string) {
     doctor_decision: "edited",
     final_text: finalText.trim(),
     final_text_ta: translateApproved(finalText.trim(), finding),
+    final_text_kn: translateApprovedKannada(finalText.trim(), finding),
     patient_visible: true,
     reject_reason: null,
   });
@@ -897,6 +900,7 @@ export async function rejectFinding(findingId: string, reason: RejectReason, not
     doctor_decision: "rejected",
     final_text: null,
     final_text_ta: null,
+    final_text_kn: null,
     patient_visible: false,
     reject_reason: note?.trim() ? `${reason}: ${note.trim()}` : reason,
   });
