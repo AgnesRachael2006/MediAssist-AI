@@ -41,6 +41,7 @@ function card(
     doctor_decision: "pending",
     final_text: null,
     final_text_ta: null,
+    final_text_kn: null,
     patient_visible: false,
     doctor_name: null,
     decided_at: null,
