@@ -34,7 +34,7 @@ export function findingDecision(finding: FindingCard): { label: string; tone: To
     case "rejected":
       return { label: "Rejected", tone: "slate" };
     default:
-      return { label: "Awaiting doctor", tone: "amber" };
+      return { label: "To review", tone: "amber" };
   }
 }
 
@@ -140,9 +140,9 @@ function Header({ entity, chip }: { entity: GraphEntity; chip?: React.ReactNode 
   const meta = KIND_META[entity.kind];
   return (
     <div className="flex h-4 shrink-0 items-center justify-between gap-2">
-      <span className="flex items-center gap-1.5">
-        <span className={cn("h-1.5 w-1.5 rounded-full", meta.dot)} />
-        <span className="text-[10px] font-semibold uppercase tracking-[0.1em] text-slate-500">{meta.label}</span>
+      <span className="flex min-w-0 items-center gap-1.5">
+        <span className={cn("h-1.5 w-1.5 shrink-0 rounded-full", meta.dot)} />
+        <span className="truncate whitespace-nowrap text-[10px] font-semibold uppercase tracking-[0.08em] text-slate-500">{meta.label}</span>
       </span>
       {chip}
     </div>
@@ -191,7 +191,7 @@ function Body({ entity }: { entity: GraphEntity }) {
           <Header entity={entity} chip={entity.latest ? <Chip tone="indigo">Latest</Chip> : null} />
           <p className="mt-1.5 shrink-0 truncate text-[15px] font-semibold leading-5 text-slate-900">{formatDate(entity.visit.date)}</p>
           <p className="shrink-0 truncate text-xs leading-4 text-slate-500">{entity.visit.label}</p>
-          <div className="mt-auto grid shrink-0 grid-cols-2 gap-2 border-t border-slate-100 pt-1.5">
+          <div className="mt-auto grid shrink-0 grid-cols-[1.35fr_1fr] gap-2 border-t border-slate-100 pt-1.5">
             <Meta label="Outcome">{outcome}</Meta>
             <Meta label="Values">{entity.observations.length} recorded</Meta>
           </div>
@@ -206,14 +206,14 @@ function Body({ entity }: { entity: GraphEntity }) {
         <Chip tone={pending ? "amber" : "green"}>{pending ? "Review needed" : "Reviewed"}</Chip>
       ) : null;
       const result = entity.findings.length
-        ? `${flagged.length} flagged · ${entity.findings.length - flagged.length} routine`
+        ? `${flagged.length} of ${entity.findings.length} flagged`
         : `${entity.observations.length} values on file`;
       return (
         <>
           <Header entity={entity} chip={chip} />
           <p className="mt-1.5 shrink-0 truncate text-[15px] font-semibold leading-5 text-slate-900">{entity.visit.file_name}</p>
           <p className="shrink-0 truncate text-xs leading-4 text-slate-500">{entity.report?.title ?? "Stored report file"}</p>
-          <div className="mt-auto grid shrink-0 grid-cols-2 gap-2 border-t border-slate-100 pt-1.5">
+          <div className="mt-auto grid shrink-0 grid-cols-[1.35fr_1fr] gap-2 border-t border-slate-100 pt-1.5">
             <Meta label="Result">{result}</Meta>
             <Meta label="Date">{formatDate(entity.visit.date)}</Meta>
           </div>
@@ -228,14 +228,14 @@ function Body({ entity }: { entity: GraphEntity }) {
           <Header entity={entity} chip={<Chip tone={decision.tone}>{decision.label}</Chip>} />
           <p className="mt-1.5 shrink-0 truncate text-[15px] font-semibold leading-5 text-slate-900">{entity.finding.test_name}</p>
           <p className="shrink-0 truncate text-xs leading-4 text-slate-500">{issueSummary(entity)}</p>
-          <div className="mt-auto grid shrink-0 grid-cols-2 gap-2 border-t border-slate-100 pt-1.5">
+          <div className="mt-auto grid shrink-0 grid-cols-[1.35fr_1fr] gap-2 border-t border-slate-100 pt-1.5">
             <Meta label="Trend">
               {entity.series.length > 1 ? (
                 <Sparkline
                   values={entity.series.map((item) => item.value)}
                   width={72}
                   height={16}
-                  className="text-amber-500"
+                  className="block text-amber-500"
                 />
               ) : (
                 "Single value"
@@ -256,7 +256,7 @@ function Body({ entity }: { entity: GraphEntity }) {
           <p className="shrink-0 truncate text-xs leading-4 text-slate-500">
             {entity.regimen ? `${entity.regimen.dosage} · ${entity.regimen.frequency}` : "Medication safety record"}
           </p>
-          <div className="mt-auto grid shrink-0 grid-cols-2 gap-2 border-t border-slate-100 pt-1.5">
+          <div className="mt-auto grid shrink-0 grid-cols-[1.35fr_1fr] gap-2 border-t border-slate-100 pt-1.5">
             <Meta label="Safety check">{entity.safety.interaction}</Meta>
             <Meta label="Decision">{medicationDecision(entity.safety)}</Meta>
           </div>
