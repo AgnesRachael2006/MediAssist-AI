@@ -61,7 +61,7 @@ export function createCbcFindings(): FindingCard[] {
       value: 9.8,
       unit: "g/dL",
       reference_range: "12.0 - 16.0 g/dL",
-      previous_value: 11.2,
+      previous_value: 10.6,
       source: {
         page: 1,
         line_start: 8,
@@ -75,7 +75,7 @@ export function createCbcFindings(): FindingCard[] {
         reason_codes: ["OUTSIDE_REFERENCE_RANGE", "TREND_CHANGE", "POSSIBLE_OVERCLAIM"],
       },
       overclaim_detail: {
-        available: ["Hemoglobin 9.8 g/dL", "MCV 76 fL"],
+        available: ["Hemoglobin 9.8 g/dL", "MCV 72 fL"],
         missing: ["Ferritin", "Iron studies"],
       },
       checks: {
@@ -88,8 +88,8 @@ export function createCbcFindings(): FindingCard[] {
       teach: {
         bullets: [
           "Outside reference range 12.0 - 16.0 g/dL",
-          "Previous value available: 11.2 g/dL",
-          "Numerical change: -1.4 g/dL",
+          "Previous value available: 10.6 g/dL",
+          "Numerical change: -0.8 g/dL",
           "The current value is outside the provided reference range and differs from the previous recorded value.",
         ],
       },
@@ -98,15 +98,15 @@ export function createCbcFindings(): FindingCard[] {
     card({
       id: "f-mcv",
       test_name: "MCV",
-      value: 76,
+      value: 72,
       unit: "fL",
       reference_range: "80 - 100 fL",
-      previous_value: 79,
+      previous_value: 75,
       source: {
         page: 1,
         line_start: 9,
         line_end: 9,
-        excerpt: "MCV .............. 76 fL       Reference 80 - 100 fL",
+        excerpt: "MCV .............. 72 fL       Reference 80 - 100 fL",
       },
       jev: {
         triage: "review_needed",
@@ -123,8 +123,8 @@ export function createCbcFindings(): FindingCard[] {
       },
       teach: {
         bullets: [
-          "76 fL is below the supplied range of 80 - 100 fL",
-          "Previous value available: 79 fL",
+          "72 fL is below the supplied range of 80 - 100 fL",
+          "Previous value available: 75 fL",
           "Numerical change: -3 fL",
         ],
       },
@@ -225,17 +225,28 @@ export function createCbcFindings(): FindingCard[] {
       test_name: "RDW",
       value: 13.2,
       unit: "%",
-      reference_range: "11.5 - 14.5 %",
+      reference_range: "",
       previous_value: null,
       source: {
         page: 1,
         line_start: 12,
         line_end: 12,
-        excerpt: "RDW .............. 13.2 %      Reference 11.5 - 14.5 %",
+        excerpt: "RDW .............. 13.2 %      Reference not printed",
       },
-      jev: { triage: "routine_normal", evidence: "moderate", overclaim: false },
-      checks: routineChecks(false, false),
-      teach: { bullets: ["13.2 % sits inside 11.5 - 14.5 %"] },
+      jev: {
+        triage: "insufficient",
+        evidence: "insufficient",
+        overclaim: false,
+        reason_codes: ["MISSING_REFERENCE_RANGE"],
+      },
+      checks: {
+        source_found: true,
+        value_extracted: true,
+        reference_available: false,
+        outside_range: false,
+        previous_available: false,
+      },
+      teach: { bullets: ["13.2 % was extracted.", "No reference range was printed on this row."] },
       ai_draft: "Value is within the reference range provided in this report.",
     }),
     card({
@@ -313,31 +324,27 @@ export function createCbcFindings(): FindingCard[] {
     card({
       id: "f-plt",
       test_name: "Platelets",
-      value: 145,
+      value: 228,
       unit: "x10^3/uL",
       reference_range: "150 - 450 x10^3/uL",
-      previous_value: 180,
+      previous_value: 224,
       source: {
         page: 1,
         line_start: 20,
         line_end: 20,
-        excerpt: "Platelets ........ 145 x10^3/uL   Reference 150 - 450",
+        excerpt: "Platelets ........ 228 x10^3/uL   Reference 150 - 450",
       },
       jev: {
-        triage: "review_needed",
+        triage: "routine_normal",
         evidence: "strong",
         overclaim: false,
-        reason_codes: ["OUTSIDE_REFERENCE_RANGE", "TREND_CHANGE"],
+        reason_codes: ["ROUTINE_NORMAL"],
       },
-      checks: routineChecks(true, true),
+      checks: routineChecks(false, true),
       teach: {
-        bullets: [
-          "145 x10^3/uL is below the supplied range of 150 - 450 x10^3/uL",
-          "Previous value available: 180 x10^3/uL",
-          "Numerical change: -35 x10^3/uL",
-        ],
+        bullets: ["228 x10^3/uL sits inside 150 - 450 x10^3/uL"],
       },
-      ai_draft: "Value is below the reference range provided in this report.",
+      ai_draft: "Value is within the reference range provided in this report.",
     }),
     card({
       id: "f-glu",
@@ -379,7 +386,7 @@ export function createCbcSourceLines(): SourceLine[] {
     [6, "RBC .............. 4.6 x10^6/uL    Reference 4.2 - 5.4"],
     [7, "Hematocrit ....... 40 %            Reference 36 - 46 %"],
     [8, "Hemoglobin ........ 9.8 g/dL       Reference 12.0 - 16.0"],
-    [9, "MCV .............. 76 fL           Reference 80 - 100"],
+    [9, "MCV .............. 72 fL           Reference 80 - 100"],
     [10, "MCH .............. 29 pg           Reference 27 - 31"],
     [11, "MCHC ............. 33 g/dL         Reference 32 - 36"],
     [12, "RDW .............. 13.2 %          Reference 11.5 - 14.5"],
@@ -388,9 +395,9 @@ export function createCbcSourceLines(): SourceLine[] {
     [16, "Lymphocytes ...... 32 %            Reference 20 - 40"],
     [17, "Monocytes ........ 6 %             Reference 2 - 8"],
     [18, "Eosinophils ...... 2 %             Reference 1 - 4"],
-    [20, "Platelets ........ 145 x10^3/uL    Reference 150 - 450"],
+    [20, "Platelets ........ 228 x10^3/uL    Reference 150 - 450"],
     [22, "Glucose .......... 92 mg/dL        Reference 70 - 99"],
-    [24, "Previous hemoglobin 11.2 g/dL recorded 12 Aug 2026"],
+    [24, "Previous hemoglobin 10.6 g/dL recorded 18 Jul 2026"],
   ] as const;
   return rows.map(([line, text]) => ({
     report_id: CBC_REPORT_ID,
@@ -406,8 +413,8 @@ export function createCbcTrends(): TrendSeries[] {
       metric: "Hemoglobin",
       unit: "g/dL",
       points: [
-        { date: "2026-06-04", value: 12.0 },
-        { date: "2026-08-12", value: 11.2 },
+        { date: "2026-03-12", value: 11.2 },
+        { date: "2026-07-18", value: 10.6 },
         { date: "2026-09-22", value: 9.8 },
       ],
     },
@@ -415,18 +422,18 @@ export function createCbcTrends(): TrendSeries[] {
       metric: "WBC",
       unit: "x10^3/uL",
       points: [
-        { date: "2026-06-04", value: 7.0 },
-        { date: "2026-08-12", value: 6.8 },
-        { date: "2026-09-22", value: 7.2 },
+        { date: "2026-03-12", value: 7.2 },
+        { date: "2026-07-18", value: 7.1 },
+        { date: "2026-09-22", value: 7.4 },
       ],
     },
     {
       metric: "Platelets",
       unit: "x10^3/uL",
       points: [
-        { date: "2026-06-04", value: 210 },
-        { date: "2026-08-12", value: 180 },
-        { date: "2026-09-22", value: 145 },
+        { date: "2026-03-12", value: 220 },
+        { date: "2026-07-18", value: 224 },
+        { date: "2026-09-22", value: 228 },
       ],
     },
     {

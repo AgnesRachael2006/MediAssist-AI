@@ -23,7 +23,7 @@ const STYLES: { id: RewriteStyle; label: string }[] = [
   { id: "formal", label: "Formal" },
 ];
 
-export function DecisionPanel({ finding }: { finding: FindingCard }) {
+export function DecisionPanel({ finding, onUpdated }: { finding: FindingCard; onUpdated?: () => void }) {
   const { notify } = useToast();
   const [teachOpen, setTeachOpen] = useState(false);
   const [whyOpen, setWhyOpen] = useState(true);
@@ -46,6 +46,7 @@ export function DecisionPanel({ finding }: { finding: FindingCard }) {
     setError("");
     try {
       await action();
+      onUpdated?.();
       notify(success);
       setConfirming(false);
       setEditing(false);

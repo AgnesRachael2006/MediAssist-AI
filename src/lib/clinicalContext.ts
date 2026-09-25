@@ -12,22 +12,22 @@ export const DEMO_PATIENT_ID = "patient-arun";
 export function createVisits(): ClinicalVisit[] {
   return [
     {
-      id: "visit-jun",
+      id: "visit-mar",
       patient_id: DEMO_PATIENT_ID,
-      date: "2026-06-04",
-      label: "June visit",
-      report_id: "rpt-cbc-jun",
-      file_name: "CBC_Jun_2026.pdf",
-      summary: "Routine",
+      date: "2026-03-12",
+      label: "March visit",
+      report_id: "rpt-cbc-mar",
+      file_name: "CBC_Mar_2026.pdf",
+      summary: "CBC report",
     },
     {
-      id: "visit-aug",
+      id: "visit-jul",
       patient_id: DEMO_PATIENT_ID,
-      date: "2026-08-12",
-      label: "August visit",
-      report_id: "rpt-cbc-aug",
-      file_name: "CBC_Aug_2026.pdf",
-      summary: "1 finding reviewed",
+      date: "2026-07-18",
+      label: "July visit",
+      report_id: "rpt-cbc-jul",
+      file_name: "CBC_Jul_2026.pdf",
+      summary: "CBC report and consultation",
     },
     {
       id: "visit-sep",
@@ -36,24 +36,26 @@ export function createVisits(): ClinicalVisit[] {
       label: "September visit",
       report_id: "rpt-cbc",
       file_name: "CBC_Report.pdf",
-      summary: "3 findings need review",
+      summary: "CBC report",
     },
   ];
 }
 
 export function createObservations(): ClinicalObservation[] {
   const rows: Array<[string, string, string, string, number, string, number, number, string]> = [
-    ["obs-hb-jun", "visit-jun", "rpt-cbc-jun", "2026-06-04", 12.0, "g/dL", 1, 8, "Hemoglobin 12.0 g/dL"],
-    ["obs-hb-aug", "visit-aug", "rpt-cbc-aug", "2026-08-12", 11.2, "g/dL", 1, 8, "Hemoglobin 11.2 g/dL"],
+    ["obs-hb-mar", "visit-mar", "rpt-cbc-mar", "2026-03-12", 11.2, "g/dL", 1, 8, "Hemoglobin 11.2 g/dL"],
+    ["obs-hb-jul", "visit-jul", "rpt-cbc-jul", "2026-07-18", 10.6, "g/dL", 1, 8, "Hemoglobin 10.6 g/dL"],
     ["obs-hb-sep", "visit-sep", "rpt-cbc", "2026-09-22", 9.8, "g/dL", 1, 8, "Hemoglobin 9.8 g/dL"],
-    ["obs-mcv-jun", "visit-jun", "rpt-cbc-jun", "2026-06-04", 82, "fL", 1, 9, "MCV 82 fL"],
-    ["obs-mcv-aug", "visit-aug", "rpt-cbc-aug", "2026-08-12", 79, "fL", 1, 9, "MCV 79 fL"],
-    ["obs-mcv-sep", "visit-sep", "rpt-cbc", "2026-09-22", 76, "fL", 1, 9, "MCV 76 fL"],
-    ["obs-plt-jun", "visit-jun", "rpt-cbc-jun", "2026-06-04", 210, "x10^3/uL", 1, 20, "Platelets 210 x10^3/uL"],
-    ["obs-plt-aug", "visit-aug", "rpt-cbc-aug", "2026-08-12", 180, "x10^3/uL", 1, 20, "Platelets 180 x10^3/uL"],
-    ["obs-plt-sep", "visit-sep", "rpt-cbc", "2026-09-22", 145, "x10^3/uL", 1, 20, "Platelets 145 x10^3/uL"],
-    ["obs-wbc-sep", "visit-sep", "rpt-cbc", "2026-09-22", 7.2, "x10^3/uL", 1, 14, "WBC 7.2 x10^3/uL"],
-    ["obs-glu-sep", "visit-sep", "rpt-cbc", "2026-09-22", 92, "mg/dL", 1, 22, "Glucose 92 mg/dL"],
+    ["obs-hb-nodate", "visit-jul", "rpt-cbc-jul", "", 10.1, "g/dL", 1, 8, "Hemoglobin 10.1 g/dL undated"],
+    ["obs-mcv-mar", "visit-mar", "rpt-cbc-mar", "2026-03-12", 78, "fL", 1, 9, "MCV 78 fL"],
+    ["obs-mcv-jul", "visit-jul", "rpt-cbc-jul", "2026-07-18", 75, "fL", 1, 9, "MCV 75 fL"],
+    ["obs-mcv-sep", "visit-sep", "rpt-cbc", "2026-09-22", 72, "fL", 1, 9, "MCV 72 fL"],
+    ["obs-plt-mar", "visit-mar", "rpt-cbc-mar", "2026-03-12", 220, "x10^3/uL", 1, 20, "Platelets 220 x10^3/uL"],
+    ["obs-plt-jul", "visit-jul", "rpt-cbc-jul", "2026-07-18", 224, "x10^3/uL", 1, 20, "Platelets 224 x10^3/uL"],
+    ["obs-plt-sep", "visit-sep", "rpt-cbc", "2026-09-22", 228, "x10^3/uL", 1, 20, "Platelets 228 x10^3/uL"],
+    ["obs-wbc-mar", "visit-mar", "rpt-cbc-mar", "2026-03-12", 7.2, "x10^3/uL", 1, 14, "WBC 7.2 x10^3/uL"],
+    ["obs-wbc-jul", "visit-jul", "rpt-cbc-jul", "2026-07-18", 7.1, "x10^3/uL", 1, 14, "WBC 7.1 x10^3/uL"],
+    ["obs-wbc-sep", "visit-sep", "rpt-cbc", "2026-09-22", 7.4, "x10^3/uL", 1, 14, "WBC 7.4 x10^3/uL"],
   ];
   return rows.map(([id, visit, report, date, value, unit, page, line, text]) => ({
     id,
@@ -64,7 +66,8 @@ export function createObservations(): ClinicalObservation[] {
     value,
     unit,
     date,
-    file_name: report === "rpt-cbc" ? "CBC_Report.pdf" : report === "rpt-cbc-aug" ? "CBC_Aug_2026.pdf" : "CBC_Jun_2026.pdf",
+    file_name:
+      report === "rpt-cbc" ? "CBC_Report.pdf" : report === "rpt-cbc-jul" ? "CBC_Jul_2026.pdf" : "CBC_Mar_2026.pdf",
     source_page: page,
     source_line: line,
     source_text: text,
@@ -78,6 +81,18 @@ export function createAllergies(): AllergyRecord[] {
       patient_id: DEMO_PATIENT_ID,
       substance: "Penicillin",
       source: "Patient allergy record",
+      recorded_at: "2026-03-12",
+      claim: "present",
+      patient_visible: true,
+    },
+    {
+      id: "alg-none-july",
+      patient_id: DEMO_PATIENT_ID,
+      substance: "No known drug allergies",
+      source: "July consultation note",
+      recorded_at: "2026-07-18",
+      claim: "none_recorded",
+      patient_visible: false,
     },
   ];
 }
@@ -112,7 +127,7 @@ export function createSafetyChecks(): MedicationSafetyRow[] {
       status: "clear",
       doctor_decision: "approved",
       why: ["No configured relationship between Paracetamol and the recorded allergy list."],
-      patient_visible: false,
+      patient_visible: true,
       decided_at: "2026-09-22T09:40:00+05:30",
     },
   ];
@@ -205,7 +220,9 @@ export function buildKnowledgeGraph(input: {
 }
 
 export function compareSeries(points: { date: string; value: number }[]) {
-  const sorted = [...points].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+  const sorted = [...points]
+    .filter((point) => point.date)
+    .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
   const current = sorted.at(-1);
   const previous = sorted.at(-2);
   if (!current || !previous) return null;

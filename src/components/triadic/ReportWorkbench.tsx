@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { ClinicalGraph } from "@/components/triadic/ClinicalGraph";
 import { ClinicalTimeline } from "@/components/triadic/ClinicalTimeline";
@@ -10,19 +10,48 @@ import { PatientPreview } from "@/components/triadic/PatientPreview";
 import { SourceViewer } from "@/components/triadic/SourceViewer";
 import { SystemStatus } from "@/components/triadic/SystemStatus";
 import { WorkflowStatus } from "@/components/triadic/WorkflowStatus";
-import { ErrorState, EmptyState } from "@/components/ui/EmptyState";
+import { ErrorState, EmptyState, LoadingState } from "@/components/ui/EmptyState";
 import { Button } from "@/components/ui/Button";
 import { Tabs } from "@/components/ui/Tabs";
+import { getFindings, getReport, getSourceLines } from "@/lib/api";
 import { countPipeline, needsDoctorReview } from "@/lib/cbcDemo";
 import { buildKnowledgeGraph } from "@/lib/clinicalContext";
 import { getPatientById } from "@/lib/mockData";
+import type { FindingCard, MedicalReport, SourceLine } from "@/lib/types";
 import { useDemoStore } from "@/lib/useDemoStore";
 
 export function ReportWorkbench({ reportId }: { reportId: string }) {
-  const { reports, findings, sourceLines, system, visits, observations, allergies, safetyChecks } = useDemoStore();
+  const stored = useDemoStore();
   const search = useSearchParams();
-  const report = reports.find((item) => item.id === reportId);
-  const rows = findings.filter((finding) => finding.report_id === reportId);
+  const live = process.env.NEXT_PUBLIC_API_MODE === "live";
+  const [remote, setRemote] = useState<{ report: MedicalReport; findings: FindingCard[]; lines: SourceLine[] } | null>(null);
+  const [loadError, setLoadError] = useState("");
+  const [version, setVersion] = useState(0);
+
+  useEffect(() => {
+    if (!live) return;
+    let cancelled = false;
+    Promise.all([getReport(reportId), getFindings(reportId), getSourceLines(reportId)])
+      .then(([report, findings, lines]) => {
+        if (cancelled) return;
+        if (!report) {
+          setLoadError("This report was not found.");
+          return;
+        }
+        setRemote({ report, findings, lines });
+      })
+      .catch((caught) => {
+        if (!cancelled) setLoadError(caught instanceof Error ? caught.message : "Unable to load this report.");
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [live, reportId, version]);
+
+  const report = live ? remote?.report : stored.reports.find((item) => item.id === reportId);
+  const rows = live ? remote?.findings ?? [] : stored.findings.filter((finding) => finding.report_id === reportId);
+  const sourceLines = live ? remote?.lines ?? [] : stored.sourceLines.filter((line) => line.report_id === reportId);
+  const { system, visits, observations, allergies, safetyChecks, reports, findings } = stored;
   const reviewRows = rows.filter(needsDoctorReview);
   const routineRows = rows.filter((finding) => !needsDoctorReview(finding));
   const [showRoutine, setShowRoutine] = useState(false);
@@ -32,6 +61,8 @@ export function ReportWorkbench({ reportId }: { reportId: string }) {
   const selected = rows.find((finding) => finding.id === selectedId) ?? visible[0] ?? null;
   const counts = countPipeline(rows);
 
+  if (loadError) return <ErrorState title="Unable to load report." description={loadError} />;
+  if (live && !remote) return <LoadingState label="Reading the extracted report..." />;
   if (!report) {
     return <ErrorState title="Unable to load report." description="Please try again." />;
   }
@@ -39,7 +70,7 @@ export function ReportWorkbench({ reportId }: { reportId: string }) {
     return (
       <EmptyState
         title="No rows extracted yet."
-        description="Open the demo CBC report to load the synthetic extract."
+        description="The file did not contain laboratory rows the reader could pin to a source line."
       />
     );
   }
@@ -97,7 +128,7 @@ export function ReportWorkbench({ reportId }: { reportId: string }) {
       <div className="grid items-start gap-4 xl:grid-cols-3">
         <SourceViewer
           fileName={report.fileName ?? "CBC_Report.pdf"}
-          lines={sourceLines.filter((line) => line.report_id === reportId)}
+          lines={sourceLines}
           finding={selected}
         />
         <div className="space-y-3">
@@ -122,11 +153,17 @@ export function ReportWorkbench({ reportId }: { reportId: string }) {
           </div>
         </div>
         <div className="space-y-4">
-          {selected ? <DecisionPanel key={selected.id} finding={selected} /> : null}
+          {selected ? (
+            <DecisionPanel
+              key={`${selected.id}-${selected.doctor_decision}-${selected.gemini_rewrite ?? ""}`}
+              finding={selected}
+              onUpdated={() => setVersion((value) => value + 1)}
+            />
+          ) : null}
           <PatientPreview
             reportId={reportId}
             title={report.title}
-            doctorName="Dr. Priya"
+            doctorName="Dr. Madhu"
             findings={rows}
           />
         </div>

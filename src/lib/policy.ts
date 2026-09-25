@@ -18,8 +18,14 @@ export function assertPublishable(text: string, finding: FindingCard) {
   if (!trimmed) {
     throw new Error("Approved wording cannot be empty.");
   }
-  if (!finding.checks.source_found || !finding.source.excerpt) {
+  if (!finding.checks.source_found || !finding.source.excerpt || !finding.source.page || !finding.source.line_start) {
     throw new Error("Approval is disabled because this finding has no pinned source.");
+  }
+  if (!finding.checks.reference_available || !finding.reference_range.trim()) {
+    throw new Error("Approval is disabled because the reference range is missing.");
+  }
+  if (!finding.jev || finding.jev.evidence === "insufficient") {
+    throw new Error("Approval is disabled because Jev marked the evidence insufficient.");
   }
   if (finding.jev.overclaim && trimmed === (finding.ai_draft ?? "").trim()) {
     throw new Error(

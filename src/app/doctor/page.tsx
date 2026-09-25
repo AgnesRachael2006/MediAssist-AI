@@ -13,6 +13,7 @@ import type { DoctorDashboardData, MedicationSafetyRow, SystemHealth } from "@/l
 
 export default function DoctorDashboardPage() {
   const store = useDemoStore();
+  const live = process.env.NEXT_PUBLIC_API_MODE === "live";
   const [data, setData] = useState<DoctorDashboardData | null>(null);
   const [system, setSystem] = useState<SystemHealth | null>(null);
   const [safety, setSafety] = useState<MedicationSafetyRow[]>([]);
@@ -33,7 +34,7 @@ export default function DoctorDashboardPage() {
     return () => {
       cancelled = true;
     };
-  }, [store.findings, store.reports, store.system, store.safetyChecks]);
+  }, [live, store.findings, store.reports, store.system, store.safetyChecks]);
 
   if (error) return <ErrorState title="Unable to load the queue." description="Please try again." />;
   if (!data || !system) return <LoadingState label="Loading the clinical command center..." />;

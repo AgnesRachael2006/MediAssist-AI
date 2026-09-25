@@ -4,9 +4,15 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import {
+  Calendar,
   FileText,
+  FolderHeart,
   Home,
+  Pill,
+  Stethoscope,
   MessageCircle,
+  Shield,
+  Share2,
   Sparkles,
   Volume2,
   LineChart,
@@ -21,12 +27,17 @@ import { LogoutButton } from "./LogoutButton";
 import { LOGGED_IN_PATIENT_ID } from "@/lib/mockData";
 
 const NAV = [
-  { href: "/patient", label: "Overview", icon: Home },
-  { href: "/patient/reports", label: "My Reports", icon: FileText },
+  { href: "/patient", label: "Dashboard", icon: Home },
+  { href: "/patient/health-vault", label: "Health Vault", icon: FolderHeart },
+  { href: "/patient/health-vault/timeline", label: "Timeline", icon: History },
+  { href: "/patient/reports", label: "Reports", icon: FileText },
+  { href: "/patient/trends", label: "Trends", icon: LineChart },
+  { href: "/patient/appointments", label: "Appointments", icon: Calendar },
+  { href: "/patient/medications", label: "Medications", icon: Pill },
+  { href: "/patient/recommendations", label: "Follow-up", icon: Stethoscope },
+  { href: "/patient/share", label: "Share Access", icon: Share2 },
   { href: "/patient/ask", label: "Ask MediAssist", icon: MessageCircle },
-  { href: "/patient/report-voice", label: "Report Voice", icon: Volume2 },
-  { href: "/patient/trends", label: "Health Trends", icon: LineChart },
-  { href: "/patient/audit", label: "Audit", icon: History },
+  { href: "/patient/privacy", label: "Privacy & Access", icon: Shield },
 ];
 
 const TITLES: Record<string, { title: string; subtitle: string }> = {
@@ -56,7 +67,7 @@ const TITLES: Record<string, { title: string; subtitle: string }> = {
   },
   "/patient/timeline": {
     title: "Health Timeline",
-    subtitle: "How your report moved from upload to explanation.",
+    subtitle: "A short record of your blood-count visits.",
   },
   "/patient/audit": {
     title: "Your report record",

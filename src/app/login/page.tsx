@@ -131,8 +131,8 @@ export default function LoginPage() {
             </p>
             <div className="mt-5 rounded-xl bg-slate-50 p-3 text-xs text-slate-600">
               <p className="font-medium text-slate-700">Demo accounts (any password)</p>
-              <p className="mt-1">Doctor → priya.nair@mediassist.demo</p>
-              <p>Patient → arun.kumar@mediassist.demo</p>
+              <p className="mt-1">Dr. Madhu → priya.nair@mediassist.demo</p>
+              <p>Agnes → arun.kumar@mediassist.demo</p>
             </div>
           </div>
         </div>

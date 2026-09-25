@@ -1,7 +1,7 @@
 import { createSeedState } from "./mockData";
 import type { DemoState } from "./types";
 
-const STORAGE_KEY = "mediassist-demo-v4";
+const STORAGE_KEY = "mediassist-demo-v5";
 const listeners = new Set<() => void>();
 
 let state: DemoState = createSeedState();

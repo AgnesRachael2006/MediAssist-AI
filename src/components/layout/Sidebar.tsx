@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Activity, ClipboardList, GitFork, History, LayoutDashboard, Pill } from "lucide-react";
+import { Activity, Calendar, ClipboardList, GitFork, History, LayoutDashboard, Pill, Share2, Users } from "lucide-react";
 import { DEMO_DOCTOR } from "@/lib/mockData";
 import { cn } from "@/lib/cn";
 import { LogoutButton } from "./LogoutButton";
@@ -11,10 +11,13 @@ import { useEffect, useState } from "react";
 
 const NAV = [
   { href: "/doctor", label: "Dashboard", icon: LayoutDashboard },
+  { href: "/doctor/patients", label: "Patients", icon: Users },
   { href: "/doctor/reports", label: "Reports", icon: ClipboardList },
-  { href: "/doctor/history", label: "Patient History", icon: History },
-  { href: "/doctor/graph", label: "Clinical Graph", icon: GitFork },
-  { href: "/doctor/medication-safety", label: "Medication Safety", icon: Pill },
+  { href: "/doctor/history", label: "Clinical Timeline", icon: History },
+  { href: "/doctor/graph", label: "Knowledge Graph", icon: GitFork },
+  { href: "/doctor/handoffs", label: "Handoffs", icon: Share2 },
+  { href: "/doctor/appointments", label: "Appointments", icon: Calendar },
+  { href: "/doctor/medications", label: "Medications", icon: Pill },
   { href: "/doctor/audit", label: "Audit Trail", icon: Activity },
 ];
 
