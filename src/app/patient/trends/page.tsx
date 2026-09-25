@@ -1,12 +1,25 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { TrendChart } from "@/components/patient/TrendChart";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { getTrends } from "@/lib/api";
 import { trendSentence } from "@/lib/policy";
+import type { TrendSeries } from "@/lib/types";
 import { useDemoStore } from "@/lib/useDemoStore";
 
 export default function TrendsPage() {
-  const { trends } = useDemoStore();
+  const { trends: stored } = useDemoStore();
+  const [live, setLive] = useState<TrendSeries[] | null>(null);
+
+  useEffect(() => {
+    if (process.env.NEXT_PUBLIC_API_MODE !== "live") return;
+    getTrends()
+      .then(setLive)
+      .catch(() => setLive([]));
+  }, []);
+
+  const trends = live ?? stored;
   if (trends.length === 0) {
     return (
       <EmptyState

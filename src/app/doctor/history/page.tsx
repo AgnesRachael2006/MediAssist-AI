@@ -10,10 +10,10 @@ export default function PatientHistoryPage() {
       <div>
         <h2 className="text-2xl font-semibold text-slate-900">Patient history</h2>
         <p className="mt-1 text-sm text-slate-500">
-          Stored visits for Arun Kumar. Numbers are calculated from recorded observations.
+          Stored visits for Agnes. Numbers are calculated from recorded observations.
         </p>
       </div>
-      <ClinicalTimeline visits={visits} observations={observations} />
+      <ClinicalTimeline visits={visits} observations={observations} showHeading={false} />
     </div>
   );
 }

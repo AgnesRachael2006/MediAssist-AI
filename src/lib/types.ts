@@ -207,6 +207,7 @@ export interface SessionUser {
   name: string;
   profileId: string;
   title?: string;
+  token?: string;
 }
 
 export interface RegisteredAccount {
@@ -430,6 +431,59 @@ export interface AllergyRecord {
   patient_id: string;
   substance: string;
   source: string;
+  recorded_at: string;
+  claim: "present" | "none_recorded";
+  patient_visible: boolean;
+}
+
+export type SharePermission =
+  | "lab_reports"
+  | "approved_findings"
+  | "allergies"
+  | "medications"
+  | "consultations"
+  | "ai_summaries";
+
+export type ShareStatus = "ACTIVE" | "EXPIRED" | "REVOKED";
+
+export interface RecordShare {
+  id: string;
+  patient_id: string;
+  shared_with_doctor_id: string;
+  access_token: string;
+  permissions: SharePermission[];
+  expires_at: string;
+  purpose: string;
+  status: ShareStatus;
+  created_at: string;
+  revoked_at: string | null;
+}
+
+export interface ClinicalHandoff {
+  id: string;
+  patient_id: string;
+  created_by: string;
+  assigned_to: string;
+  reason: string;
+  summary: string;
+  ai_summary: string | null;
+  status: "open" | "accepted" | "closed";
+  created_at: string;
+  accepted_at: string | null;
+  closed_at: string | null;
+}
+
+export interface DataQualityItem {
+  code: string;
+  title: string;
+  detail: string;
+}
+
+export interface DataQualityReport {
+  conflicts: DataQualityItem[];
+  missing_information: DataQualityItem[];
+  incomplete_trends: DataQualityItem[];
+  severity: "clear" | "review_needed";
 }
 
 export interface MedicationSafetyRow {
@@ -476,6 +530,8 @@ export interface DemoState {
   observations: ClinicalObservation[];
   allergies: AllergyRecord[];
   safetyChecks: MedicationSafetyRow[];
+  shares: RecordShare[];
+  handoffs: ClinicalHandoff[];
   system: SystemHealth;
 }
 

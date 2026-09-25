@@ -23,19 +23,27 @@ import type {
 export const DEMO_DOCTORS: Doctor[] = [
   {
     id: "doctor-2",
-    name: "Dr. Priya Nair",
+    name: "Dr. Madhu",
     title: "Internal Medicine",
     specialty: "Internal Medicine",
     email: "priya.nair@mediassist.demo",
-    initials: "PN",
+    initials: "MA",
+  },
+  {
+    id: "doctor-3",
+    name: "Dr. Shwetha",
+    title: "Hematology",
+    specialty: "Hematology",
+    email: "rahul.menon@mediassist.demo",
+    initials: "SH",
   },
   {
     id: "doctor-1",
-    name: "Dr. Sarah Wilson",
+    name: "Dr. Smiley",
     title: "General Physician",
     specialty: "General Medicine",
     email: "sarah.wilson@mediassist.demo",
-    initials: "SW",
+    initials: "SM",
   },
 ];
 
@@ -44,9 +52,9 @@ export const DEMO_DOCTOR = DEMO_DOCTORS[0];
 export const DEMO_PATIENTS: Patient[] = [
   {
     id: "patient-arun",
-    name: "Arun Kumar",
+    name: "Agnes",
     age: 34,
-    sex: "Male",
+    sex: "Female",
     email: "arun.kumar@mediassist.demo",
     mrn: "MRN-10428",
     allergies: ["None recorded"],
@@ -634,6 +642,8 @@ export function createSeedState(): DemoState {
     observations: createObservations(),
     allergies: createAllergies(),
     safetyChecks: createSafetyChecks(),
+    shares: [],
+    handoffs: [],
     system: { pdf: true, gemini: true, jev: true, database: true },
   };
 }

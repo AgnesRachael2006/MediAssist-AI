@@ -20,9 +20,21 @@ import {
 import {
   clearSession,
   getRegisteredAccounts,
+  getSession,
   saveRegisteredAccount,
 } from "./session";
 import { getDemoState, patchDemoState, resetDemoState } from "./store";
+import {
+  AccessError,
+  accessLevel,
+  buildHandoffSummary,
+  dataQuality,
+  datedTrends,
+  healthVault,
+  nextShareToken,
+  shareStatus,
+  type Actor,
+} from "./vault";
 import type {
   AIInsight,
   AppNotification,
@@ -35,6 +47,7 @@ import type {
   HealthTrend,
   FindingCard,
   MedicalReport,
+  SourceLine,
   Medication,
   MedicationSafetyCheck,
   PatientExplanation,
@@ -121,15 +134,24 @@ export function markNotificationsRead(role: SessionUser["role"], patientId?: str
 }
 
 async function liveRequest<T>(path: string, init?: RequestInit): Promise<T> {
+  const token = getSession()?.token;
   const response = await fetch(`${API_BASE}${path}`, {
     ...init,
     headers: {
       "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
       ...(init?.headers ?? {}),
     },
   });
   if (!response.ok) {
-    throw new Error(`API error ${response.status}`);
+    let detail = "";
+    try {
+      const body = (await response.json()) as { detail?: unknown };
+      if (typeof body.detail === "string") detail = body.detail;
+    } catch {
+      detail = "";
+    }
+    throw new Error(detail || `API error ${response.status}`);
   }
   return response.json() as Promise<T>;
 }
@@ -284,6 +306,109 @@ export async function getDashboardStats(): Promise<DashboardStats> {
     aiInsights: getDemoState().insights.length,
     pendingDecisions: reports.filter((report) => report.doctorReviewStatus === "pending").length,
   };
+}
+
+export async function uploadDocument(file: File, patientId = "patient-arun"): Promise<MedicalReport> {
+  if (process.env.NEXT_PUBLIC_API_MODE !== "live") {
+    return uploadReport(file.name, patientId);
+  }
+  const body = new FormData();
+  body.set("file", file);
+  body.set("patientId", patientId);
+  const token = getSession()?.token;
+  const response = await fetch(`${API_BASE}/reports/upload`, {
+    method: "POST",
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+    body,
+  });
+  if (!response.ok) {
+    let detail = "";
+    try {
+      const payload = (await response.json()) as { detail?: unknown };
+      if (typeof payload.detail === "string") detail = payload.detail;
+    } catch {
+      detail = "";
+    }
+    throw new Error(detail || `API error ${response.status}`);
+  }
+  return response.json() as Promise<MedicalReport>;
+}
+
+export async function publishReportSummary(reportId: string) {
+  return liveRequest(`/reports/${reportId}/summary/approve`, { method: "POST" });
+}
+
+export async function listAppointments() {
+  if (!USE_MOCK) return liveRequest<Array<Record<string, string>>>("/appointments");
+  return [];
+}
+
+export async function appointmentSlots(doctorId: string) {
+  if (!USE_MOCK) return liveRequest<Array<Record<string, string>>>(`/appointments/slots?doctorId=${doctorId}`);
+  return [];
+}
+
+export async function bookAppointment(input: { doctorId: string; specialty: string; appointmentDate: string; appointmentTime: string; reason: string }) {
+  return liveRequest("/appointments", { method: "POST", body: JSON.stringify(input) });
+}
+
+export async function updateAppointment(id: string, status: string) {
+  return liveRequest(`/appointments/${id}`, { method: "PATCH", body: JSON.stringify({ status }) });
+}
+
+export async function listPatientMedications(patientId: string) {
+  return liveRequest<Array<Record<string, string>>>(`/patients/${patientId}/medications`);
+}
+
+export async function createMedication(input: { patientId: string; name: string; dosage: string; frequency: string; instructions: string }) {
+  return liveRequest<{ id: string }>("/medications", { method: "POST", body: JSON.stringify(input) });
+}
+
+export async function createReminder(medicationId: string, reminderTime: string) {
+  return liveRequest(`/medications/${medicationId}/reminders`, {
+    method: "POST",
+    body: JSON.stringify({ reminderTime, frequency: "daily" }),
+  });
+}
+
+export async function listMyMedications() {
+  if (!USE_MOCK) return liveRequest<Array<Record<string, string>>>("/patients/me/medications");
+  return [];
+}
+
+export async function listMyReminders() {
+  if (!USE_MOCK) return liveRequest<Array<Record<string, string>>>("/patients/me/reminders");
+  return [];
+}
+
+export async function markReminderTaken(id: string) {
+  return liveRequest(`/reminders/${id}/taken`, { method: "POST" });
+}
+
+export async function getLanguage() {
+  if (!USE_MOCK) return liveRequest<{ language: string }>("/patients/me/language");
+  return { language: "en" };
+}
+
+export async function setLanguage(language: string) {
+  return liveRequest("/patients/me/language", { method: "PATCH", body: JSON.stringify({ language }) });
+}
+
+export async function listMyRecommendations() {
+  if (!USE_MOCK) return liveRequest<Array<{ id: string; text: string; recommended_specialty?: string }>>("/patients/me/recommendations");
+  return [];
+}
+
+export async function createRecommendation(patientId: string, reason: string, recommendedSpecialty: string) {
+  return liveRequest(`/patients/${patientId}/recommendations`, {
+    method: "POST",
+    body: JSON.stringify({ reason, recommendedSpecialty }),
+  });
+}
+
+export async function getSourceLines(reportId: string): Promise<SourceLine[]> {
+  if (!USE_MOCK) return liveRequest<SourceLine[]>(`/reports/${reportId}/source`);
+  return getDemoState().sourceLines.filter((line) => line.report_id === reportId);
 }
 
 export async function uploadReport(
@@ -1074,6 +1199,262 @@ export async function reviewMedicationSafety(
 export async function getHealth() {
   return getSystemStatus();
 }
+
+function requireActor(): Actor {
+  const session = getSession();
+  if (!session) throw new AccessError(401, "Sign in required");
+  return { role: session.role, id: session.profileId, name: session.name };
+}
+
+export async function getHealthVault(patientId?: string) {
+  if (!USE_MOCK) {
+    const path = patientId ? `/patients/${patientId}/health-vault` : "/patients/me/health-vault";
+    return liveRequest<Awaited<ReturnType<typeof healthVault>>>(path);
+  }
+  await wait(120);
+  const actor = requireActor();
+  const id = patientId ?? (actor.role === "patient" ? actor.id : "");
+  if (!id) throw new AccessError(400, "Patient is required");
+  return healthVault(getDemoState(), actor, id);
+}
+
+export async function getDataQuality(patientId: string) {
+  if (!USE_MOCK) return liveRequest<import("./types").DataQualityReport>(`/patients/${patientId}/data-quality`);
+  await wait(80);
+  assertTreating(patientId);
+  return dataQuality(getDemoState(), patientId);
+}
+
+function assertTreating(patientId: string) {
+  const actor = requireActor();
+  if (accessLevel(getDemoState(), actor, patientId) !== "treating" && accessLevel(getDemoState(), actor, patientId) !== "own") {
+    if (accessLevel(getDemoState(), actor, patientId) === null) throw new AccessError(403, "Forbidden");
+  }
+  if (actor.role === "doctor" && accessLevel(getDemoState(), actor, patientId) !== "treating") {
+    throw new AccessError(403, "Forbidden");
+  }
+}
+
+export async function createShare(input: {
+  doctorId: string;
+  permissions: import("./types").SharePermission[];
+  hours: number;
+  purpose: string;
+}) {
+  if (!USE_MOCK) {
+    return liveRequest<import("./types").RecordShare>("/sharing/create", {
+      method: "POST",
+      body: JSON.stringify(input),
+    });
+  }
+  const actor = requireActor();
+  if (actor.role !== "patient") throw new AccessError(403, "Forbidden");
+  const createdAt = nowIso();
+  const share = {
+    id: id("share"),
+    patient_id: actor.id,
+    shared_with_doctor_id: input.doctorId,
+    access_token: nextShareToken(getDemoState().shares.map((item) => item.access_token)),
+    permissions: input.permissions,
+    expires_at: new Date(Date.now() + input.hours * 3600_000).toISOString(),
+    purpose: input.purpose,
+    status: "ACTIVE" as const,
+    created_at: createdAt,
+    revoked_at: null,
+  };
+  patchDemoState((state) => ({ ...state, shares: [share, ...state.shares] }));
+  addTriadicEvent({
+    report_id: "share",
+    actor: actor.name,
+    actor_kind: "doctor",
+    action: "SHARE_CREATED",
+    detail: `${actor.name} shared selected records. Code ${share.access_token}.`,
+  });
+  return share;
+}
+
+export async function accessSharedRecord(code: string) {
+  if (!USE_MOCK) {
+    return liveRequest<Awaited<ReturnType<typeof healthVault>>>("/sharing/access", {
+      method: "POST",
+      body: JSON.stringify({ code }),
+    });
+  }
+  const actor = requireActor();
+  if (actor.role !== "doctor") throw new AccessError(403, "Forbidden");
+  const share = getDemoState().shares.find((item) => item.access_token.toLowerCase() === code.trim().toLowerCase());
+  if (!share || share.shared_with_doctor_id !== actor.id) throw new AccessError(403, "Forbidden");
+  const status = shareStatus(share);
+  if (status !== "ACTIVE") throw new AccessError(403, status === "REVOKED" ? "Access revoked" : "Access expired");
+  addTriadicEvent({
+    report_id: "share",
+    actor: actor.name,
+    actor_kind: "doctor",
+    action: "SHARE_ACCESSED",
+    detail: `${actor.name} opened shared record ${share.access_token}.`,
+  });
+  return healthVault(getDemoState(), actor, share.patient_id);
+}
+
+export async function revokeShare(shareId: string) {
+  if (!USE_MOCK) {
+    await liveRequest("/sharing/revoke", {
+      method: "POST",
+      body: JSON.stringify({ shareId }),
+    });
+    return;
+  }
+  const actor = requireActor();
+  const share = getDemoState().shares.find((item) => item.id === shareId && item.patient_id === actor.id);
+  if (!share || actor.role !== "patient") throw new AccessError(403, "Forbidden");
+  patchDemoState((state) => ({
+    ...state,
+    shares: state.shares.map((item) =>
+      item.id === shareId ? { ...item, status: "REVOKED" as const, revoked_at: nowIso() } : item,
+    ),
+  }));
+  addTriadicEvent({
+    report_id: "share",
+    actor: actor.name,
+    actor_kind: "doctor",
+    action: "SHARE_REVOKED",
+    detail: `${actor.name} revoked ${share.access_token}.`,
+  });
+}
+
+export async function listShares() {
+  if (!USE_MOCK) return liveRequest<import("./types").RecordShare[]>("/sharing/history");
+  const actor = requireActor();
+  if (actor.role !== "patient") throw new AccessError(403, "Forbidden");
+  return getDemoState().shares.filter((item) => item.patient_id === actor.id);
+}
+
+export async function createHandoff(patientId: string, assignedTo: string, reason: string) {
+  if (!USE_MOCK) {
+    return liveRequest<import("./types").ClinicalHandoff>("/handoffs", {
+      method: "POST",
+      body: JSON.stringify({ patientId, assignedTo, reason }),
+    });
+  }
+  const actor = requireActor();
+  if (accessLevel(getDemoState(), actor, patientId) !== "treating") throw new AccessError(403, "Forbidden");
+  const handoff = {
+    id: id("hand"),
+    patient_id: patientId,
+    created_by: actor.id,
+    assigned_to: assignedTo,
+    reason,
+    summary: buildHandoffSummary(getDemoState(), patientId),
+    ai_summary: null,
+    status: "open" as const,
+    created_at: nowIso(),
+    accepted_at: null,
+    closed_at: null,
+  };
+  patchDemoState((state) => ({ ...state, handoffs: [handoff, ...state.handoffs] }));
+  addTriadicEvent({
+    report_id: "handoff",
+    actor: actor.name,
+    actor_kind: "doctor",
+    action: "HANDOFF_CREATED",
+    detail: `Handoff created for ${reason}.`,
+  });
+  return handoff;
+}
+
+export async function addHandoffAiSummary(handoffId: string) {
+  if (!USE_MOCK) {
+    return liveRequest<import("./types").ClinicalHandoff>(`/handoffs/${handoffId}/summary`, { method: "POST" });
+  }
+  const actor = requireActor();
+  const current = getDemoState().handoffs.find((item) => item.id === handoffId);
+  if (!current || accessLevel(getDemoState(), actor, current.patient_id) !== "treating") {
+    throw new AccessError(403, "Forbidden");
+  }
+  if (!getDemoState().system.gemini) {
+    throw new Error("AI assistance unavailable. Structured report data remains available.");
+  }
+  const aiSummary = `AI-assisted summary of approved records only. ${current.summary}`;
+  patchDemoState((state) => ({
+    ...state,
+    handoffs: state.handoffs.map((item) => (item.id === handoffId ? { ...item, ai_summary: aiSummary } : item)),
+  }));
+  return getDemoState().handoffs.find((item) => item.id === handoffId);
+}
+
+export async function listHandoffs() {
+  if (!USE_MOCK) return liveRequest<import("./types").ClinicalHandoff[]>("/handoffs");
+  const actor = requireActor();
+  return getDemoState().handoffs.filter(
+    (item) => item.created_by === actor.id || item.assigned_to === actor.id,
+  );
+}
+
+export async function acceptHandoff(handoffId: string) {
+  if (!USE_MOCK) {
+    await liveRequest(`/handoffs/${handoffId}/accept`, { method: "POST" });
+    return;
+  }
+  const actor = requireActor();
+  const current = getDemoState().handoffs.find((item) => item.id === handoffId && item.assigned_to === actor.id);
+  if (!current) throw new AccessError(403, "Forbidden");
+  patchDemoState((state) => ({
+    ...state,
+    handoffs: state.handoffs.map((item) =>
+      item.id === handoffId ? { ...item, status: "accepted" as const, accepted_at: nowIso() } : item,
+    ),
+  }));
+  addTriadicEvent({
+    report_id: "handoff",
+    actor: actor.name,
+    actor_kind: "doctor",
+    action: "HANDOFF_ACCEPTED",
+    detail: `${actor.name} accepted the handoff.`,
+  });
+}
+
+export async function getPatientDirectory() {
+  if (!USE_MOCK) {
+    return liveRequest<
+      Array<{
+        id: string;
+        name: string;
+        mrn: string;
+        last_visit: string | null;
+        reports: number;
+        pending_review: number;
+        trend: string;
+        access: string;
+      }>
+    >("/doctor/patients");
+  }
+  const actor = requireActor();
+  if (actor.role !== "doctor") throw new AccessError(403, "Forbidden");
+  const state = getDemoState();
+  return DEMO_PATIENTS.map((patient) => {
+    const level = accessLevel(state, actor, patient.id);
+    const visits = state.visits.filter((item) => item.patient_id === patient.id);
+    const pending = state.findings.filter(
+      (item) =>
+        state.reports.some((report) => report.id === item.report_id && report.patientId === patient.id) &&
+        (item.jev.triage === "review_needed" || item.jev.triage === "insufficient") &&
+        item.doctor_decision === "pending",
+    ).length;
+    const hb = datedTrends(state, patient.id).find((item) => item.metric === "Hemoglobin");
+    return {
+      id: patient.id,
+      name: patient.name,
+      mrn: patient.mrn,
+      last_visit: visits.slice().sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())[0]?.date ?? null,
+      reports: state.reports.filter((report) => report.patientId === patient.id).length,
+      pending_review: level === "treating" ? pending : 0,
+      trend: hb && hb.delta < 0 ? "Hb down" : hb ? "Hb recorded" : "No trend",
+      access: level ?? "none",
+    };
+  });
+}
+
+export { datedTrends, dataQuality, AccessError };
 
 export async function loadCbcDemo() {
   const existing = getDemoState().reports.find((report) => report.id === CBC_REPORT_ID);

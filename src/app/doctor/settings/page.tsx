@@ -12,7 +12,7 @@ export default function SettingsPage() {
     <div className="max-w-xl space-y-4 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
       <h2 className="text-sm font-semibold text-slate-900">Demo workspace</h2>
       <p className="text-sm text-slate-600">
-        Reset restores the original synthetic patients, reports, and pending review for Arun
+        Reset restores the original synthetic patients, reports, and pending review for Agnes
         Kumar. This does not affect any backend.
       </p>
       <button

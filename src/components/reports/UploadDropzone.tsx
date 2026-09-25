@@ -4,13 +4,16 @@ import { useState } from "react";
 import { FileText, ScanText, Sparkles, Stethoscope, Upload } from "lucide-react";
 
 interface UploadDropzoneProps {
-  onUpload: (fileName: string) => void;
+  onUpload: (file: File) => void;
   onDemo: () => void;
   onInvalid?: () => void;
   busy?: boolean;
+  phase?: string;
 }
 
-export function UploadDropzone({ onUpload, onDemo, onInvalid, busy }: UploadDropzoneProps) {
+const PHASES = ["Uploading", "Extracting", "Analyzing"];
+
+export function UploadDropzone({ onUpload, onDemo, onInvalid, busy, phase }: UploadDropzoneProps) {
   const [drag, setDrag] = useState(false);
 
   function handleFiles(files: FileList | null) {
@@ -21,7 +24,7 @@ export function UploadDropzone({ onUpload, onDemo, onInvalid, busy }: UploadDrop
       onInvalid?.();
       return;
     }
-    onUpload(file.name);
+    onUpload(file);
   }
 
   return (
@@ -36,19 +39,44 @@ export function UploadDropzone({ onUpload, onDemo, onInvalid, busy }: UploadDrop
         setDrag(false);
         handleFiles(event.dataTransfer.files);
       }}
-      className={`rounded-2xl border-2 border-dashed bg-white p-8 text-center shadow-sm ${
+      className={`rounded-2xl border bg-white p-6 shadow-sm sm:p-8 ${
         drag ? "border-indigo-400 bg-indigo-50/40" : "border-slate-200"
       }`}
     >
-      <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-indigo-50 text-indigo-700">
-        <Upload size={22} />
+      <div className="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex items-start gap-4 text-left">
+          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-indigo-50 text-indigo-700">
+            <Upload size={20} />
+          </div>
+          <div>
+            <p className="text-base font-semibold text-slate-900">Upload document</p>
+            <p className="mt-1 max-w-md text-sm leading-6 text-slate-500">
+              Drop a PDF here, or choose a file. The server reads the text and sends each row for review.
+            </p>
+          </div>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <label className="inline-flex min-h-11 cursor-pointer items-center rounded-xl bg-indigo-700 px-4 text-sm font-medium text-white hover:bg-indigo-800">
+            {busy ? "Working..." : "Upload document"}
+            <input
+              type="file"
+              accept="application/pdf,.pdf"
+              className="sr-only"
+              disabled={busy}
+              onChange={(event) => handleFiles(event.target.files)}
+            />
+          </label>
+          <button
+            type="button"
+            disabled={busy}
+            onClick={onDemo}
+            className="inline-flex min-h-11 items-center rounded-xl border border-slate-200 bg-white px-4 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-60"
+          >
+            Use demo report
+          </button>
+        </div>
       </div>
-      <p className="mt-4 text-lg font-semibold text-slate-900">Upload Clinical Report</p>
-      <p className="mt-1 text-sm text-slate-500">
-        Drag and drop a PDF, or choose a file. Demo mode does not send files to a server.
-      </p>
-      <p className="mt-2 text-xs font-medium text-slate-500">Supported format: PDF</p>
-      <div className="mt-5 flex flex-wrap justify-center gap-2 text-xs text-slate-600">
+      <div className="mt-5 flex flex-wrap gap-2 text-xs text-slate-600">
         <span className="inline-flex items-center gap-1 rounded-full bg-slate-50 px-2.5 py-1 ring-1 ring-slate-200">
           <FileText size={12} /> PDF Report
         </span>
@@ -62,26 +90,25 @@ export function UploadDropzone({ onUpload, onDemo, onInvalid, busy }: UploadDrop
           <Stethoscope size={12} /> Doctor Review
         </span>
       </div>
-      <div className="mt-6 flex flex-wrap justify-center gap-3">
-        <label className="cursor-pointer rounded-xl bg-indigo-700 px-4 py-2.5 text-sm font-medium text-white hover:bg-indigo-800">
-          {busy ? "Working..." : "Upload Report"}
-          <input
-            type="file"
-            accept="application/pdf,.pdf"
-            className="sr-only"
-            disabled={busy}
-            onChange={(event) => handleFiles(event.target.files)}
-          />
-        </label>
-        <button
-          type="button"
-          disabled={busy}
-          onClick={onDemo}
-          className="rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-60"
-        >
-          Use Demo Report
-        </button>
-      </div>
+      {busy ? (
+        <ol className="mt-5 grid gap-2 sm:grid-cols-3" aria-live="polite">
+          {PHASES.map((item) => {
+            const active = phase === item;
+            const done = PHASES.indexOf(phase ?? "") > PHASES.indexOf(item);
+            return (
+              <li
+                key={item}
+                className={`rounded-xl px-3 py-2 text-sm ${
+                  active ? "bg-indigo-700 font-medium text-white" : done ? "bg-emerald-50 text-emerald-800" : "bg-slate-50 text-slate-500"
+                }`}
+              >
+                {item}
+                {active ? "..." : ""}
+              </li>
+            );
+          })}
+        </ol>
+      ) : null}
     </div>
   );
 }

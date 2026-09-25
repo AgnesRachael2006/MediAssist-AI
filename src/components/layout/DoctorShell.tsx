@@ -8,7 +8,7 @@ import { getSession } from "@/lib/session";
 import { hydrateDemoState } from "@/lib/store";
 import { cn } from "@/lib/cn";
 import Link from "next/link";
-import { Activity, ClipboardList, GitFork, History, LayoutDashboard, Pill, X } from "lucide-react";
+import { Activity, Calendar, ClipboardList, GitFork, History, LayoutDashboard, Pill, Share2, Users, X } from "lucide-react";
 import { LogoutButton } from "./LogoutButton";
 
 const TITLES: Record<string, { title: string; subtitle: string }> = {
@@ -52,10 +52,13 @@ const TITLES: Record<string, { title: string; subtitle: string }> = {
 
 const MOBILE_NAV = [
   { href: "/doctor", label: "Dashboard", icon: LayoutDashboard },
+  { href: "/doctor/patients", label: "Patients", icon: Users },
   { href: "/doctor/reports", label: "Reports", icon: ClipboardList },
-  { href: "/doctor/history", label: "Patient History", icon: History },
-  { href: "/doctor/graph", label: "Clinical Graph", icon: GitFork },
-  { href: "/doctor/medication-safety", label: "Medication Safety", icon: Pill },
+  { href: "/doctor/history", label: "Clinical Timeline", icon: History },
+  { href: "/doctor/graph", label: "Knowledge Graph", icon: GitFork },
+  { href: "/doctor/handoffs", label: "Handoffs", icon: Share2 },
+  { href: "/doctor/appointments", label: "Appointments", icon: Calendar },
+  { href: "/doctor/medications", label: "Medications", icon: Pill },
   { href: "/doctor/audit", label: "Audit Trail", icon: Activity },
 ];
 
